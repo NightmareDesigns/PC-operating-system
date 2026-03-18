@@ -831,3 +831,512 @@
 .window-transition {
   transition: top 0.18s ease, left 0.18s ease, width 0.18s ease, height 0.18s ease;
 }
+
+/* ===============================================
+   MATRIX RAIN APP
+   =============================================== */
+.matrix-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+.matrix-canvas {
+  flex: 1;
+  background: #000;
+  display: block;
+  min-width: 0;
+}
+
+.matrix-controls {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--bg-light);
+  border-left: 1px solid var(--border);
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.matrix-ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.matrix-ctrl-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.matrix-ctrl-val {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 18px;
+  text-align: right;
+}
+
+.matrix-color-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.matrix-color-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.matrix-color-btn:hover { transform: scale(1.15); }
+.matrix-color-btn.active { border-color: white; }
+
+/* ===============================================
+   PAINT APP
+   =============================================== */
+.paint-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.paint-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.paint-toolbar-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.paint-tool-group {
+  display: flex;
+  gap: 3px;
+}
+
+.paint-tool-btn {
+  width: 30px;
+  height: 28px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.paint-tool-btn:hover { background: rgba(255,255,255,0.12); }
+.paint-tool-btn.active {
+  background: rgba(79,142,247,0.25);
+  border-color: rgba(79,142,247,0.5);
+}
+
+.paint-tool-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.paint-palette {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  max-width: 120px;
+}
+
+.paint-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: transform 0.1s;
+}
+
+.paint-swatch:hover { transform: scale(1.2); }
+
+.paint-canvas-wrap {
+  flex: 1;
+  overflow: auto;
+  background: repeating-conic-gradient(#2a2d3a 0% 25%, #252836 0% 50%)
+              0 0 / 16px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px;
+}
+
+.paint-canvas {
+  background: white;
+  display: block;
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+
+/* ===============================================
+   SNAKE GAME
+   =============================================== */
+.snake-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: 8px 8px 4px;
+  gap: 6px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.snake-header {
+  display: flex;
+  gap: 20px;
+}
+
+.snake-score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.snake-score-label {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.snake-score-val {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.snake-canvas {
+  display: block;
+  border: 1px solid rgba(79,142,247,0.3);
+  border-radius: 6px;
+  box-shadow: 0 0 16px rgba(74,222,128,0.1);
+}
+
+.snake-controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* D-pad */
+.snake-dpad {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.dpad-btn {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.dpad-btn:hover { background: rgba(79,142,247,0.25); }
+.dpad-btn:active { background: rgba(79,142,247,0.45); }
+
+.dpad-up    { top: 0;  left: 34px; }
+.dpad-down  { bottom: 0; left: 34px; }
+.dpad-left  { top: 34px; left: 0; }
+.dpad-right { top: 34px; right: 0; }
+
+/* ===============================================
+   MUSIC PLAYER
+   =============================================== */
+.music-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 12px;
+  gap: 10px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.music-vis-wrap {
+  position: relative;
+  height: 120px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.music-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.music-disc {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 8px rgba(79,142,247,0.6));
+  transition: transform 0.1s linear;
+}
+
+.music-info {
+  text-align: center;
+}
+
+.music-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: white;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-artist {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.music-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-seek {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+.music-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: white;
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.music-btn:hover { background: rgba(79,142,247,0.2); }
+.music-btn:active { transform: scale(0.93); }
+
+.music-btn.music-play {
+  width: 50px;
+  height: 50px;
+  font-size: 1.4rem;
+  background: var(--accent);
+  border-color: var(--accent-dark);
+}
+
+.music-btn.music-play:hover { background: var(--accent-dark); }
+
+.music-volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-volume { flex: 1; }
+
+.music-playlist-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.music-playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  gap: 6px;
+}
+
+.music-playlist {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.music-pl-item {
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.music-pl-item:hover { background: rgba(79,142,247,0.12); }
+.music-pl-item.active {
+  background: rgba(79,142,247,0.2);
+  color: var(--accent-light);
+}
+
+/* ===============================================
+   STICKY NOTES
+   =============================================== */
+.sticky-note {
+  position: absolute;
+  min-width: 140px;
+  min-height: 100px;
+  border-radius: 4px;
+  box-shadow: 3px 4px 12px rgba(0,0,0,0.4);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  resize: both;
+  overflow: hidden;
+}
+
+.sticky-header {
+  position: relative;
+  height: 28px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: grab;
+  background: rgba(0,0,0,0.12);
+  flex-shrink: 0;
+}
+
+.sticky-header:active { cursor: grabbing; }
+
+.sticky-actions {
+  display: flex;
+  gap: 3px;
+  position: relative;
+  z-index: 2;
+}
+
+.sticky-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: rgba(0,0,0,0.55);
+  transition: background 0.1s;
+}
+
+.sticky-btn:hover { background: rgba(0,0,0,0.12); }
+
+.sticky-color-picker {
+  position: absolute;
+  top: 28px;
+  right: 4px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: 120px;
+  z-index: 9100;
+  box-shadow: var(--shadow);
+}
+
+.sticky-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.sticky-color-swatch:hover {
+  transform: scale(1.2);
+  border-color: white;
+}
+
+.sticky-text {
+  flex: 1;
+  border: none;
+  background: transparent;
+  resize: none;
+  padding: 8px 10px;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  color: rgba(0,0,0,0.8);
+  outline: none;
+  line-height: 1.5;
+}
+
+.sticky-text::placeholder { color: rgba(0,0,0,0.3); }
+

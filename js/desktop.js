@@ -175,8 +175,18 @@ function handleContextAction(action) {
     case 'new-file':
       NightOS.launchApp('texteditor');
       break;
+    case 'new-sticky': {
+      const menu = $('context-menu');
+      const x = parseInt(menu.style.left, 10) || 100;
+      const y = parseInt(menu.style.top, 10)  || 100;
+      if (window.StickyNotes) window.StickyNotes.add(x, y);
+      break;
+    }
     case 'change-wallpaper':
       NightOS.launchApp('settings');
+      break;
+    case 'matrix-wallpaper':
+      NightOS.launchApp('matrix');
       break;
     case 'settings':
       NightOS.launchApp('settings');
@@ -335,6 +345,8 @@ function initDesktop() {
   initContextMenu();
   initStartMenu();
   initGlobalShortcuts();
+  // Render persisted sticky notes
+  if (window.StickyNotes) window.StickyNotes.renderSaved();
   showNotification('NightOS', `Welcome, ${NightOS.username}! ` +
     'Running on ' + (navigator.platform || 'your device') + '.');
 }
@@ -349,3 +361,4 @@ window.escHtml = escHtml;
 window.lockScreen = lockScreen;
 window.restartOS = restartOS;
 window.shutdownOS = shutdownOS;
+window.saveSettings = saveSettings;

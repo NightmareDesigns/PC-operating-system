@@ -75,6 +75,22 @@
         <span class="icon-img">🖼️</span>
         <span class="icon-label">Gallery</span>
       </div>
+      <div class="desktop-icon" data-app="matrix" tabindex="0" role="button" aria-label="Matrix Rain">
+        <span class="icon-img">🟩</span>
+        <span class="icon-label">Matrix Rain</span>
+      </div>
+      <div class="desktop-icon" data-app="paint" tabindex="0" role="button" aria-label="Paint">
+        <span class="icon-img">🎨</span>
+        <span class="icon-label">Paint</span>
+      </div>
+      <div class="desktop-icon" data-app="snake" tabindex="0" role="button" aria-label="Snake">
+        <span class="icon-img">🐍</span>
+        <span class="icon-label">Snake</span>
+      </div>
+      <div class="desktop-icon" data-app="musicplayer" tabindex="0" role="button" aria-label="Music Player">
+        <span class="icon-img">🎵</span>
+        <span class="icon-label">Music</span>
+      </div>
     </div>
 
     <!-- Context Menu -->
@@ -82,8 +98,10 @@
       <ul>
         <li data-action="new-folder" role="menuitem">📁 New Folder</li>
         <li data-action="new-file" role="menuitem">📄 New File</li>
+        <li data-action="new-sticky" role="menuitem">📌 New Sticky Note</li>
         <li class="separator" role="separator"></li>
         <li data-action="change-wallpaper" role="menuitem">🖼️ Change Wallpaper</li>
+        <li data-action="matrix-wallpaper" role="menuitem">🟩 Matrix Wallpaper</li>
         <li data-action="settings" role="menuitem">⚙️ Settings</li>
         <li class="separator" role="separator"></li>
         <li data-action="refresh" role="menuitem">🔄 Refresh</li>
@@ -163,6 +181,18 @@
           <button class="start-app-item" data-app="clock">
             <span>🕐</span><span>Clock</span>
           </button>
+          <button class="start-app-item" data-app="matrix">
+            <span>🟩</span><span>Matrix Rain</span>
+          </button>
+          <button class="start-app-item" data-app="paint">
+            <span>🎨</span><span>Paint</span>
+          </button>
+          <button class="start-app-item" data-app="snake">
+            <span>🐍</span><span>Snake</span>
+          </button>
+          <button class="start-app-item" data-app="musicplayer">
+            <span>🎵</span><span>Music</span>
+          </button>
         </div>
       </div>
 
@@ -190,6 +220,11 @@
   <script src="js/apps/settings.js"></script>
   <script src="js/apps/imagegallery.js"></script>
   <script src="js/apps/clock.js"></script>
+  <script src="js/apps/matrix.js"></script>
+  <script src="js/apps/paint.js"></script>
+  <script src="js/apps/snake.js"></script>
+  <script src="js/apps/musicplayer.js"></script>
+  <script src="js/apps/stickynotes.js"></script>
   <script src="js/boot.js"></script>
 </body>
 </html>

@@ -57,13 +57,19 @@ const WindowManager = (() => {
           continue;
         }
 
-        // Remove javascript: URLs from common URL-bearing attributes.
+        // Remove dangerous URL schemes from common URL-bearing attributes.
         if (
           (name === 'href' || name === 'src' || name === 'xlink:href') &&
-          typeof value === 'string' &&
-          value.trim().toLowerCase().startsWith('javascript:')
+          typeof value === 'string'
         ) {
-          el.removeAttribute(attr.name);
+          const scheme = value.trim().toLowerCase();
+          if (
+            scheme.startsWith('javascript:') ||
+            scheme.startsWith('data:')       ||
+            scheme.startsWith('vbscript:')
+          ) {
+            el.removeAttribute(attr.name);
+          }
         }
       }
     }
