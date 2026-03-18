@@ -11,6 +11,72 @@ const WindowManager = (() => {
   /** @type {Map<string, HTMLElement>} */
   const windows = new Map();
 
+  /**
+   * Safely convert an HTML string into a sanitized DocumentFragment.
+   * Removes script-like elements, inline event handlers, and javascript: URLs.
+   * This allows rich markup while significantly reducing XSS risk.
+   *
+   * @param {string} html
+   * @returns {DocumentFragment}
+   */
+  function createSafeFragmentFromHTML(html) {
+    const range = document.createRange();
+    range.selectNodeContents(document.body || document.documentElement);
+    const fragment = range.createContextualFragment(html);
+
+    /** @type {Node[]} */
+    const nodesToRemove = [];
+
+    const walker = document.createTreeWalker(
+      fragment,
+      NodeFilter.SHOW_ELEMENT,
+      null,
+      false
+    );
+
+    // Remove dangerous elements and attributes.
+    // This is a conservative sanitizer intended for app-internal HTML.
+    while (walker.nextNode()) {
+      const el = /** @type {HTMLElement} */ (walker.currentNode);
+      const tag = el.tagName.toLowerCase();
+
+      // Strip entirely dangerous elements.
+      if (tag === 'script' || tag === 'style' || tag === 'iframe' || tag === 'object' || tag === 'embed') {
+        nodesToRemove.push(el);
+        continue;
+      }
+
+      // Remove inline event handlers and javascript: URLs.
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        const value = attr.value;
+
+        // Inline event handlers (onclick, onload, etc.)
+        if (name.startsWith('on')) {
+          el.removeAttribute(attr.name);
+          continue;
+        }
+
+        // Remove javascript: URLs from common URL-bearing attributes.
+        if (
+          (name === 'href' || name === 'src' || name === 'xlink:href') &&
+          typeof value === 'string' &&
+          value.trim().toLowerCase().startsWith('javascript:')
+        ) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+
+    for (const node of nodesToRemove) {
+      if (node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    }
+
+    return fragment;
+  }
+
   /* ---- Create Window ---- */
   /**
    * @param {object} opts
@@ -70,7 +136,10 @@ const WindowManager = (() => {
 
     const contentEl = el.querySelector('.window-content');
     if (typeof opts.content === 'string') {
-      contentEl.innerHTML = opts.content;
+      // Parse and sanitize the HTML string before inserting it into the DOM
+      const fragment = createSafeFragmentFromHTML(opts.content);
+      contentEl.textContent = '';
+      contentEl.appendChild(fragment);
     } else if (opts.content instanceof HTMLElement) {
       contentEl.appendChild(opts.content);
     }
