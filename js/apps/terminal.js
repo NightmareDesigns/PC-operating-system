@@ -91,6 +91,16 @@
       output.scrollTop = output.scrollHeight;
     }
 
+    /**
+     * WARNING: This helper renders raw HTML into the terminal output.
+     *
+     * Security contract:
+     * - `html` MUST be a trusted, static string controlled by the application.
+     * - NEVER pass user-controlled or otherwise untrusted data to this function.
+     *
+     * Violating this contract will create an XSS vulnerability because it uses
+     * `innerHTML` directly.
+     */
     function printHTML(html) {
       const line = document.createElement('div');
       line.className = 'terminal-line';
