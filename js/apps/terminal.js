@@ -228,13 +228,6 @@
             if (node.length === 0) {
               print('(empty)');
             } else {
-              // Colorize dirs vs files
-              const entries = node.map(name => {
-                const childPath = target === '/' ? `/${name}` : `${target}/${name}`;
-                const child = VFS[childPath];
-                const isDir = Array.isArray(child);
-                return isDir ? `\x1b[34m${name}/\x1b[0m` : name;
-              });
               // Print in columns (simple)
               print(node.map((name, i) => {
                 const cp = target === '/' ? `/${name}` : `${target}/${name}`;
