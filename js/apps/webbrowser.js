@@ -75,7 +75,7 @@
     const navHistory = [];
     let navIdx = -1;
 
-    function navigate(rawUrl) {
+    function navigate(rawUrl, opts) {
       let url = rawUrl.trim();
       if (!url) return;
 
@@ -92,8 +92,10 @@
       currentUrl = url;
       if (urlInput) urlInput.value = url;
 
-      // Update history
-      if (navHistory[navIdx] !== url) {
+      const updateHistory = !opts || opts.updateHistory !== false;
+      // Update history only when requested (normal navigation),
+      // not when moving within existing history (back/forward).
+      if (updateHistory && navHistory[navIdx] !== url) {
         navHistory.splice(navIdx + 1);
         navHistory.push(url);
         navIdx = navHistory.length - 1;
@@ -123,14 +125,14 @@
     function goBack() {
       if (navIdx > 0) {
         navIdx--;
-        navigate(navHistory[navIdx]);
+        navigate(navHistory[navIdx], { updateHistory: false });
       }
     }
 
     function goForward() {
       if (navIdx < navHistory.length - 1) {
         navIdx++;
-        navigate(navHistory[navIdx]);
+        navigate(navHistory[navIdx], { updateHistory: false });
       }
     }
 
