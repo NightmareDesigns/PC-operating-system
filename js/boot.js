@@ -11,10 +11,10 @@
     { pct: 22,  msg: 'Initializing hardware drivers…' },
     { pct: 35,  msg: 'Mounting virtual filesystem…' },
     { pct: 48,  msg: 'Starting system services…' },
-    { pct: 62,  msg: 'Loading desktop environment…' },
+    { pct: 62,  msg: 'Loading NightmareOS desktop…' },
     { pct: 75,  msg: 'Applying user preferences…' },
     { pct: 88,  msg: 'Preparing workspace…' },
-    { pct: 100, msg: 'Welcome to NightOS!' },
+    { pct: 100, msg: 'Welcome to NightmareOS!' },
   ];
 
   let stepIndex = 0;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>NightOS — Cross-Platform Desktop</title>
+  <title>NightmareOS — Web Desktop Environment</title>
   <link rel="stylesheet" href="css/desktop.css" />
   <link rel="stylesheet" href="css/apps.css" />
 </head>
@@ -13,13 +13,13 @@
   <div id="boot-screen">
     <div class="boot-logo">
       <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="40" cy="40" r="38" stroke="#4f8ef7" stroke-width="3"/>
-        <path d="M40 14 L54 34 H26 Z" fill="#4f8ef7"/>
-        <path d="M40 66 L26 46 H54 Z" fill="#4f8ef7" opacity="0.6"/>
-        <circle cx="40" cy="40" r="8" fill="#4f8ef7"/>
+        <circle cx="40" cy="40" r="38" stroke="#00ff41" stroke-width="3"/>
+        <path d="M40 14 L54 34 H26 Z" fill="#00ff41"/>
+        <path d="M40 66 L26 46 H54 Z" fill="#00ff41" opacity="0.6"/>
+        <circle cx="40" cy="40" r="8" fill="#00ff41"/>
       </svg>
-      <h1>NightOS</h1>
-      <p>Cross-Platform Desktop Environment</p>
+      <h1>NightmareOS</h1>
+      <p>Web Desktop Environment</p>
     </div>
     <div class="boot-progress-wrap">
       <div class="boot-progress-bar" id="boot-bar"></div>
@@ -91,6 +91,26 @@
         <span class="icon-img">🎵</span>
         <span class="icon-label">Music</span>
       </div>
+      <div class="desktop-icon" data-app="calendar" tabindex="0" role="button" aria-label="Calendar">
+        <span class="icon-img">📅</span>
+        <span class="icon-label">Calendar</span>
+      </div>
+      <div class="desktop-icon" data-app="videoplayer" tabindex="0" role="button" aria-label="Video Player">
+        <span class="icon-img">🎬</span>
+        <span class="icon-label">Videos</span>
+      </div>
+      <div class="desktop-icon" data-app="sysmonitor" tabindex="0" role="button" aria-label="System Monitor">
+        <span class="icon-img">📊</span>
+        <span class="icon-label">Monitor</span>
+      </div>
+      <div class="desktop-icon" data-app="appstore" tabindex="0" role="button" aria-label="App Store">
+        <span class="icon-img">🏪</span>
+        <span class="icon-label">App Store</span>
+      </div>
+      <div class="desktop-icon" data-app="adminpanel" tabindex="0" role="button" aria-label="Admin Panel">
+        <span class="icon-img">🛡️</span>
+        <span class="icon-label">Admin</span>
+      </div>
     </div>
 
     <!-- Context Menu -->
@@ -117,10 +137,10 @@
       <button class="taskbar-start" id="start-btn" aria-haspopup="true" aria-expanded="false">
         <span class="start-icon">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" stroke="white" stroke-width="1.5"/>
-            <path d="M10 4L13.5 9H6.5Z" fill="white"/>
-            <path d="M10 16L6.5 11H13.5Z" fill="white" opacity="0.7"/>
-            <circle cx="10" cy="10" r="2.5" fill="white"/>
+            <circle cx="10" cy="10" r="9" stroke="#00ff41" stroke-width="1.5"/>
+            <path d="M10 4L13.5 9H6.5Z" fill="#00ff41"/>
+            <path d="M10 16L6.5 11H13.5Z" fill="#00ff41" opacity="0.7"/>
+            <circle cx="10" cy="10" r="2.5" fill="#00ff41"/>
           </svg>
         </span>
         <span>Start</span>
@@ -193,6 +213,21 @@
           <button class="start-app-item" data-app="musicplayer">
             <span>🎵</span><span>Music</span>
           </button>
+          <button class="start-app-item" data-app="calendar">
+            <span>📅</span><span>Calendar</span>
+          </button>
+          <button class="start-app-item" data-app="videoplayer">
+            <span>🎬</span><span>Videos</span>
+          </button>
+          <button class="start-app-item" data-app="sysmonitor">
+            <span>📊</span><span>Monitor</span>
+          </button>
+          <button class="start-app-item" data-app="appstore">
+            <span>🏪</span><span>App Store</span>
+          </button>
+          <button class="start-app-item" data-app="adminpanel">
+            <span>🛡️</span><span>Admin</span>
+          </button>
         </div>
       </div>
 
@@ -225,6 +260,11 @@
   <script src="js/apps/snake.js"></script>
   <script src="js/apps/musicplayer.js"></script>
   <script src="js/apps/stickynotes.js"></script>
+  <script src="js/apps/calendar.js"></script>
+  <script src="js/apps/sysmonitor.js"></script>
+  <script src="js/apps/videoplayer.js"></script>
+  <script src="js/apps/adminpanel.js"></script>
+  <script src="js/apps/appstore.js"></script>
   <script src="js/boot.js"></script>
 </body>
 </html>

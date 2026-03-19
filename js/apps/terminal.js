@@ -17,10 +17,10 @@
     PATH: '/usr/bin:/bin',
     HOME, // same reference as the HOME constant above
     USER: 'user',
-    HOSTNAME: 'nightos',
+    HOSTNAME: 'nightmareos',
     SHELL: '/bin/bash',
     TERM: 'xterm-256color',
-    OS: 'NightOS 1.0.0',
+    OS: 'NightmareOS 2.0.0',
   };
 
   // Command history is now maintained per-terminal instance inside initTerm.
@@ -35,16 +35,16 @@
     '/home/user/Documents': ['notes.txt', 'todo.txt'],
     '/home/user/Downloads': [],
     '/home/user/Pictures': [],
-    '/home/user/notes.txt': '# My Notes\n\nWelcome to NightOS Terminal!',
-    '/home/user/Desktop/readme.txt': 'Welcome to NightOS!\nA cross-platform desktop environment.',
-    '/home/user/Documents/notes.txt': '## Notes\n\n- Explore NightOS\n- Try the apps',
+    '/home/user/notes.txt': '# My Notes\n\nWelcome to NightmareOS Terminal!',
+    '/home/user/Desktop/readme.txt': 'Welcome to NightmareOS!\nA web-based desktop environment.',
+    '/home/user/Documents/notes.txt': '## Notes\n\n- Explore NightmareOS\n- Try the apps',
     '/home/user/Documents/todo.txt': 'TODO:\n[ ] Explore\n[ ] Have fun',
     '/usr': ['bin', 'lib'],
     '/usr/bin': ['ls', 'cat', 'echo', 'pwd', 'whoami'],
     '/bin': ['sh', 'bash'],
     '/etc': ['passwd', 'hostname'],
     '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:User:/home/user:/bin/bash',
-    '/etc/hostname': 'nightos',
+    '/etc/hostname': 'nightmareos',
     '/tmp': [],
   };
 
@@ -110,7 +110,7 @@
     }
 
     // Welcome banner
-    print('NightOS Terminal v1.0.0', 'sys');
+    print('NightmareOS Terminal v2.0.0', 'sys');
     print(`Running on ${navigator.platform || 'Web'}`, 'sys');
     print('Type "help" for available commands.', 'muted');
     print('');
@@ -213,9 +213,9 @@
 
         case 'uname':
           if (args[0] === '-a') {
-            print(`NightOS nightos 1.0.0 #1 SMP Web Browser ${new Date().getFullYear()} ${navigator.platform}`);
+            print(`NightmareOS nightmareos 2.0.0 #1 SMP Web Browser ${new Date().getFullYear()} ${navigator.platform}`);
           } else {
-            print('NightOS');
+            print('NightmareOS');
           }
           break;
 
@@ -333,22 +333,22 @@
           const mem = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'Unknown';
           const cores = navigator.hardwareConcurrency || 'Unknown';
           printHTML(
-            `<span style="color:#4f8ef7">   ███╗   ██╗██╗ ██████╗ ██╗  ██╗████████╗ ██████╗ ███████╗</span>`
+            `<span style="color:#00ff41">  ███╗   ██╗██╗ ██████╗ ██╗  ██╗████████╗███╗   ███╗ █████╗ ██████╗ ███████╗</span>`
           );
-          printHTML(`<span style="color:#4f8ef7">   ████╗  ██║██║██╔════╝ ██║  ██║╚══██╔══╝██╔═══██╗██╔════╝</span>`);
-          printHTML(`<span style="color:#4f8ef7">   ██╔██╗ ██║██║██║  ███╗███████║   ██║   ██║   ██║███████╗</span>`);
-          printHTML(`<span style="color:#4f8ef7">   ██║╚██╗██║██║██║   ██║██╔══██║   ██║   ██║   ██║╚════██║</span>`);
-          printHTML(`<span style="color:#4f8ef7">   ██║ ╚████║██║╚██████╔╝██║  ██║   ██║   ╚██████╔╝███████║</span>`);
-          printHTML(`<span style="color:#4f8ef7">   ╚═╝  ╚═══╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝</span>`);
+          printHTML(`<span style="color:#00ff41">  ████╗  ██║██║██╔════╝ ██║  ██║╚══██╔══╝████╗ ████║██╔══██╗██╔══██╗██╔════╝</span>`);
+          printHTML(`<span style="color:#00ff41">  ██╔██╗ ██║██║██║  ███╗███████║   ██║   ██╔████╔██║███████║██████╔╝█████╗  </span>`);
+          printHTML(`<span style="color:#00ff41">  ██║╚██╗██║██║██║   ██║██╔══██║   ██║   ██║╚██╔╝██║██╔══██║██╔══██╗██╔══╝  </span>`);
+          printHTML(`<span style="color:#00ff41">  ██║ ╚████║██║╚██████╔╝██║  ██║   ██║   ██║ ╚═╝ ██║██║  ██║██║  ██║███████╗</span>`);
+          printHTML(`<span style="color:#00ff41">  ╚═╝  ╚═══╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝</span>`);
           print('');
           print(`  ${ENV.USER}@${ENV.HOSTNAME}`, 'sys');
-          print(`  OS:       NightOS 1.0.0 (Web)`, 'sys');
+          print(`  OS:       NightmareOS 2.0.0 (Web)`, 'sys');
           print(`  Platform: ${plat}`, 'sys');
           print(`  Browser:  ${ua.split(' ').slice(-2).join(' ')}`, 'sys');
           print(`  CPU:      ${cores} logical cores`, 'sys');
           print(`  RAM:      ${mem}`, 'sys');
           print(`  Shell:    ${ENV.SHELL}`, 'sys');
-          print(`  Terminal: NightOS Terminal v1.0.0`, 'sys');
+          print(`  Terminal: NightmareOS Terminal v2.0.0`, 'sys');
           print(`  Resolution: ${window.screen.width}x${window.screen.height}`, 'sys');
           break;
         }

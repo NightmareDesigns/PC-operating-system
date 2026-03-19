@@ -8,7 +8,8 @@
 
 /* ---- Global OS State ---- */
 const NightOS = {
-  version: '1.0.0',
+  version: '2.0.0',
+  displayName: 'NightmareOS',
   username: 'User',
   platform: navigator.platform || 'Unknown',
   /** @type {Map<string, {title:string, icon:string, open:function}>} */
@@ -19,6 +20,10 @@ const NightOS = {
     animations: true,
     fontSize: 'medium',
     volume: 80,
+    matrixWallpaper: true,
+    accentColor: '#4f8ef7',
+    username: 'User',
+    bootMessage: 'Welcome to NightmareOS!',
   },
 
   /** Register an application */
@@ -214,7 +219,7 @@ function initStartMenu() {
   else if (/Linux/i.test(ua)) platformName = 'Linux';
 
   const platformEl = $('start-platform');
-  if (platformEl) platformEl.textContent = `Running on ${platformName}`;
+  if (platformEl) platformEl.textContent = `NightmareOS 2.0 · ${platformName}`;
 
   btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -340,14 +345,28 @@ function initGlobalShortcuts() {
 /* ---- Init Desktop ---- */
 function initDesktop() {
   loadSettings();
-  applyWallpaper(NightOS.settings.wallpaper);
+  // Apply accent color if customized
+  if (NightOS.settings.accentColor && NightOS.settings.accentColor !== '#4f8ef7') {
+    document.documentElement.style.setProperty('--accent', NightOS.settings.accentColor);
+  }
+  // Apply username
+  NightOS.username = NightOS.settings.username || 'User';
+  document.querySelectorAll('.login-user, .start-username').forEach(el => {
+    el.textContent = NightOS.username;
+  });
+  // Start Matrix rain wallpaper by default (or apply gradient)
+  if (NightOS.settings.matrixWallpaper && window.MatrixWallpaper) {
+    window.MatrixWallpaper.start();
+  } else {
+    applyWallpaper(NightOS.settings.wallpaper);
+  }
   initDesktopIcons();
   initContextMenu();
   initStartMenu();
   initGlobalShortcuts();
   // Render persisted sticky notes
   if (window.StickyNotes) window.StickyNotes.renderSaved();
-  showNotification('NightOS', `Welcome, ${NightOS.username}! ` +
+  showNotification('NightmareOS', `Welcome, ${NightOS.username}! ` +
     'Running on ' + (navigator.platform || 'your device') + '.');
 }
 

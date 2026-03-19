@@ -46,7 +46,22 @@
     return `
       <div class="settings-section">
         <h3>Wallpaper</h3>
-        <div class="wallpaper-grid" id="wallpaper-grid">${wallpaperOpts}</div>
+        <div class="settings-row">
+          <div class="settings-label">Matrix Rain Background<small>Animated Matrix rain as desktop background</small></div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-matrix-wp" ${NightOS.settings.matrixWallpaper ? 'checked' : ''} />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="wallpaper-grid" id="wallpaper-grid" style="${NightOS.settings.matrixWallpaper ? 'opacity:0.4;pointer-events:none;' : ''}">${wallpaperOpts}</div>
+      </div>
+      <div class="settings-section">
+        <h3>Accent Color</h3>
+        <div class="settings-row">
+          <div class="settings-label">UI Accent Color<small>Applied to buttons and highlights</small></div>
+          <input type="color" id="setting-accent" value="${NightOS.settings.accentColor || '#4f8ef7'}"
+                 style="width:40px;height:32px;border:none;border-radius:4px;cursor:pointer;background:none;" />
+        </div>
       </div>
       <div class="settings-section">
         <h3>Display</h3>
@@ -76,7 +91,7 @@
         <h3>Platform</h3>
         <div class="settings-row">
           <div class="settings-label">OS</div>
-          <span style="font-size:0.82rem;color:var(--text-primary)">NightOS 1.0.0</span>
+          <span style="font-size:0.82rem;color:var(--text-primary)">NightmareOS 2.0.0</span>
         </div>
         <div class="settings-row">
           <div class="settings-label">Platform</div>
@@ -103,7 +118,7 @@
       <div class="settings-section">
         <h3>Storage</h3>
         <div class="settings-row">
-          <div class="settings-label">Clear all settings<small>Resets NightOS to defaults</small></div>
+          <div class="settings-label">Clear all settings<small>Resets NightmareOS to defaults</small></div>
           <button class="win-toolbar-btn" id="btn-clear-storage" style="min-width:100px;">Clear Data</button>
         </div>
       </div>`;
@@ -163,23 +178,23 @@
       <div class="about-panel">
         <div class="about-logo">
           <svg width="72" height="72" viewBox="0 0 80 80" fill="none">
-            <circle cx="40" cy="40" r="38" stroke="#4f8ef7" stroke-width="2.5"/>
-            <path d="M40 14 L54 34 H26 Z" fill="#4f8ef7"/>
-            <path d="M40 66 L26 46 H54 Z" fill="#4f8ef7" opacity="0.6"/>
-            <circle cx="40" cy="40" r="8" fill="#4f8ef7"/>
+            <circle cx="40" cy="40" r="38" stroke="#00ff41" stroke-width="2.5"/>
+            <path d="M40 14 L54 34 H26 Z" fill="#00ff41"/>
+            <path d="M40 66 L26 46 H54 Z" fill="#00ff41" opacity="0.6"/>
+            <circle cx="40" cy="40" r="8" fill="#00ff41"/>
           </svg>
         </div>
-        <div class="about-name">NightOS</div>
-        <div class="about-version">Version 1.0.0 — Cross-Platform Desktop Environment</div>
+        <div class="about-name">NightmareOS</div>
+        <div class="about-version">Version 2.0.0 — Web Desktop Environment</div>
         <table class="about-table">
-          <tr><td>Kernel</td><td>NightOS WebKernel 1.0</td></tr>
+          <tr><td>Kernel</td><td>NightmareOS WebKernel 2.0</td></tr>
           <tr><td>Build</td><td>${new Date().getFullYear()}</td></tr>
-          <tr><td>Platforms</td><td>Windows · macOS · Linux · Android</td></tr>
+          <tr><td>Platforms</td><td>Windows · macOS · Linux · Android · iOS</td></tr>
           <tr><td>Renderer</td><td>Web Browser (HTML5 + CSS3 + ES2020)</td></tr>
           <tr><td>License</td><td>MIT</td></tr>
         </table>
         <p style="font-size:0.78rem;color:var(--text-secondary);margin-top:16px;text-align:center;line-height:1.6;">
-          NightOS is a web-based desktop environment that runs<br>in any modern browser on any operating system or device.
+          NightmareOS is a web-based desktop environment that runs<br>in any modern browser on any operating system or device.
         </p>
       </div>`;
   }
@@ -219,6 +234,34 @@
     if (!panelEl) return;
 
     if (panel === 'appearance') {
+      // Matrix wallpaper toggle
+      const matrixWpCheck = panelEl.querySelector('#setting-matrix-wp');
+      const wallpaperGrid = panelEl.querySelector('#wallpaper-grid');
+      if (matrixWpCheck) {
+        matrixWpCheck.addEventListener('change', () => {
+          NightOS.settings.matrixWallpaper = matrixWpCheck.checked;
+          saveSettings();
+          if (matrixWpCheck.checked) {
+            if (window.MatrixWallpaper) window.MatrixWallpaper.start();
+            if (wallpaperGrid) { wallpaperGrid.style.opacity = '0.4'; wallpaperGrid.style.pointerEvents = 'none'; }
+          } else {
+            if (window.MatrixWallpaper) window.MatrixWallpaper.stop();
+            applyWallpaper(NightOS.settings.wallpaper);
+            if (wallpaperGrid) { wallpaperGrid.style.opacity = ''; wallpaperGrid.style.pointerEvents = ''; }
+          }
+        });
+      }
+
+      // Accent color
+      const accentInput = panelEl.querySelector('#setting-accent');
+      if (accentInput) {
+        accentInput.addEventListener('input', () => {
+          NightOS.settings.accentColor = accentInput.value;
+          document.documentElement.style.setProperty('--accent', accentInput.value);
+          saveSettings();
+        });
+      }
+
       // Wallpaper selection
       panelEl.querySelectorAll('.wallpaper-option').forEach(opt => {
         const activate = () => {
@@ -228,6 +271,14 @@
           });
           opt.classList.add('selected');
           opt.setAttribute('aria-pressed', 'true');
+          // If matrix is active, disable it first
+          if (NightOS.settings.matrixWallpaper && window.MatrixWallpaper) {
+            window.MatrixWallpaper.stop();
+            NightOS.settings.matrixWallpaper = false;
+            if (matrixWpCheck) matrixWpCheck.checked = false;
+            if (wallpaperGrid) { wallpaperGrid.style.opacity = ''; wallpaperGrid.style.pointerEvents = ''; }
+            saveSettings();
+          }
           applyWallpaper(parseInt(opt.dataset.wp, 10));
         };
         opt.addEventListener('click', activate);
