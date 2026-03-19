@@ -99,11 +99,8 @@
           <button class="browser-open-tab-btn" id="br-open-tab">Open in New Browser Tab ↗</button>
           <button class="win-toolbar-btn" id="br-try-again" style="margin-top:6px;">↻ Try Again</button>
         </div>
-        <!-- Main iframe -->
-        <iframe class="browser-frame hidden" id="br-frame"
-                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation"
-                title="Browser content" aria-label="Browser content frame"
-                referrerpolicy="no-referrer"></iframe>
+        <!-- Main iframe (created programmatically to avoid sanitizer stripping) -->
+        <div id="br-frame-slot"></div>
         <!-- Loading overlay -->
         <div class="browser-loading hidden" id="br-loading">
           <div class="browser-spinner"></div>
@@ -118,7 +115,6 @@
 
   function initBrowser(el) {
     const urlInput  = el.querySelector('#br-url');
-    const frame     = el.querySelector('#br-frame');
     const blocked   = el.querySelector('#br-blocked');
     const homeEl    = el.querySelector('#br-home-page');
     const loadingEl = el.querySelector('#br-loading');
@@ -126,6 +122,24 @@
     const sslEl     = el.querySelector('#br-ssl');
     const openTab   = el.querySelector('#br-open-tab');
     const tryAgain  = el.querySelector('#br-try-again');
+
+    // Create iframe programmatically so the window manager sanitizer
+    // does not strip it (the sanitizer removes iframe elements from HTML strings).
+    const frame = document.createElement('iframe');
+    frame.className = 'browser-frame hidden';
+    frame.id = 'br-frame';
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.title = 'Browser content';
+    frame.setAttribute('aria-label', 'Browser content frame');
+    frame.setAttribute('referrerpolicy', 'no-referrer');
+    const slot = el.querySelector('#br-frame-slot');
+    if (slot) {
+      slot.parentNode.replaceChild(frame, slot);
+    } else {
+      // Fallback: append into the content area so the browser is still usable
+      const content = el.querySelector('#br-content');
+      if (content) content.appendChild(frame);
+    }
 
     let currentUrl = '';
     const navHistory = [];
