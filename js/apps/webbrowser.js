@@ -50,7 +50,8 @@
         <button class="browser-nav-btn browser-go-btn" id="br-go" title="Go" aria-label="Navigate">→</button>
         <button class="browser-nav-btn" id="br-newtab" title="Open in new tab" aria-label="New tab">↗</button>
       </div>
-      <div class="win-toolbar" style="flex-wrap:wrap;gap:4px;padding:4px 8px;">
+      <div class="browser-bookmarks-bar" style="flex-wrap:wrap;gap:4px;padding:4px 8px;display:flex;align-items:center;">
+        <span class="browser-bookmarks-label" style="font-size:11px;color:#8892a4;margin-right:4px;white-space:nowrap;">★ Bookmarks:</span>
         ${bookmarkBtns}
       </div>
       <div id="br-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;">
@@ -99,11 +100,8 @@
           <button class="browser-open-tab-btn" id="br-open-tab">Open in New Browser Tab ↗</button>
           <button class="win-toolbar-btn" id="br-try-again" style="margin-top:6px;">↻ Try Again</button>
         </div>
-        <!-- Main iframe -->
-        <iframe class="browser-frame hidden" id="br-frame"
-                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation"
-                title="Browser content" aria-label="Browser content frame"
-                referrerpolicy="no-referrer"></iframe>
+        <!-- Main iframe (created dynamically to bypass WindowManager sanitizer) -->
+        <div id="br-frame-container" class="browser-frame-container hidden"></div>
         <!-- Loading overlay -->
         <div class="browser-loading hidden" id="br-loading">
           <div class="browser-spinner"></div>
@@ -117,15 +115,26 @@
   }
 
   function initBrowser(el) {
-    const urlInput  = el.querySelector('#br-url');
-    const frame     = el.querySelector('#br-frame');
-    const blocked   = el.querySelector('#br-blocked');
-    const homeEl    = el.querySelector('#br-home-page');
-    const loadingEl = el.querySelector('#br-loading');
-    const status    = el.querySelector('#br-status');
-    const sslEl     = el.querySelector('#br-ssl');
-    const openTab   = el.querySelector('#br-open-tab');
-    const tryAgain  = el.querySelector('#br-try-again');
+    const urlInput       = el.querySelector('#br-url');
+    const frameContainer = el.querySelector('#br-frame-container');
+    const blocked        = el.querySelector('#br-blocked');
+    const homeEl         = el.querySelector('#br-home-page');
+    const loadingEl      = el.querySelector('#br-loading');
+    const status         = el.querySelector('#br-status');
+    const sslEl          = el.querySelector('#br-ssl');
+    const openTab        = el.querySelector('#br-open-tab');
+    const tryAgain       = el.querySelector('#br-try-again');
+
+    // Create the iframe dynamically so it bypasses the WindowManager
+    // HTML sanitizer (which strips <iframe> tags for security).
+    const frame = document.createElement('iframe');
+    frame.className = 'browser-frame';
+    frame.id = 'br-frame';
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.setAttribute('title', 'Browser content');
+    frame.setAttribute('aria-label', 'Browser content frame');
+    frame.setAttribute('referrerpolicy', 'no-referrer');
+    frameContainer.appendChild(frame);
 
     let currentUrl = '';
     const navHistory = [];
@@ -150,7 +159,7 @@
     /* ---- Show/hide views ---- */
     function showHome() {
       homeEl.classList.remove('hidden');
-      frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.add('hidden');
       loadingEl.classList.add('hidden');
       if (status) status.textContent = 'Home';
@@ -160,13 +169,13 @@
     function showFrame() {
       homeEl.classList.add('hidden');
       blocked.classList.add('hidden');
-      frame.classList.remove('hidden');
+      frameContainer.classList.remove('hidden');
       loadingEl.classList.remove('hidden');
     }
 
     function showBlocked(url) {
       homeEl.classList.add('hidden');
-      frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.remove('hidden');
       loadingEl.classList.add('hidden');
       if (openTab) openTab.dataset.url = url;
