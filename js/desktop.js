@@ -37,7 +37,7 @@ const NightOS = {
     if (app) {
       app.open();
     } else {
-      showNotification('NightOS', `App "${id}" not found.`);
+      showNotification('NightmareOS', `App "${id}" not found.`);
     }
   },
 };
@@ -336,6 +336,16 @@ function initGlobalShortcuts() {
     if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 't') {
       e.preventDefault();
       NightOS.launchApp('terminal');
+    }
+    // Ctrl/Cmd + Alt + F → Firefox Launcher
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'f') {
+      e.preventDefault();
+      NightOS.launchApp('firefox');
+    }
+    // Ctrl/Cmd + Alt + S → Script Manager (Tampermonkey)
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 's') {
+      e.preventDefault();
+      NightOS.launchApp('scriptmanager');
     }
     // Super / Win key (Meta alone) → Start menu
     // Note: browsers intercept Meta alone, so we skip
