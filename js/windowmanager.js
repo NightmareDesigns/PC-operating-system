@@ -280,24 +280,34 @@ const WindowManager = (() => {
     else btn.classList.remove('active');
   }
 
+  /* ---- Global drag/resize state ----
+   * A single set of document-level listeners is attached once (below) instead
+   * of adding new listeners for every window that is created.  The active
+   * handlers are swapped in when a drag/resize starts and cleared on end.
+   * ------------------------------------------------------------------ */
+  let activeMoveHandler = null;
+  let activeEndHandler  = null;
+
+  document.addEventListener('mousemove', e => {
+    if (activeMoveHandler) activeMoveHandler(e.clientX, e.clientY);
+  });
+  document.addEventListener('mouseup', () => {
+    if (activeEndHandler) activeEndHandler();
+  });
+  document.addEventListener('touchmove', e => {
+    if (!activeMoveHandler) return;
+    const t = e.touches[0];
+    activeMoveHandler(t.clientX, t.clientY);
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (activeEndHandler) activeEndHandler();
+  });
+
   /* ---- Drag ---- */
   function initDrag(win, handle) {
-    let dragging = false;
     let startX, startY, startLeft, startTop;
 
-    function onStart(cx, cy) {
-      if (win.classList.contains('maximized')) return;
-      dragging = true;
-      startX = cx;
-      startY = cy;
-      startLeft = parseInt(win.style.left, 10) || 0;
-      startTop = parseInt(win.style.top, 10) || 0;
-      handle.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-    }
-
     function onMove(cx, cy) {
-      if (!dragging) return;
       const dx = cx - startX;
       const dy = cy - startY;
       const newLeft = Math.max(-(win.offsetWidth - 80), startLeft + dx);
@@ -309,9 +319,22 @@ const WindowManager = (() => {
     }
 
     function onEnd() {
-      dragging = false;
       handle.style.cursor = 'grab';
       document.body.style.userSelect = '';
+      activeMoveHandler = null;
+      activeEndHandler  = null;
+    }
+
+    function onStart(cx, cy) {
+      if (win.classList.contains('maximized')) return;
+      startX = cx;
+      startY = cy;
+      startLeft = parseInt(win.style.left, 10) || 0;
+      startTop  = parseInt(win.style.top, 10)  || 0;
+      handle.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+      activeMoveHandler = onMove;
+      activeEndHandler  = onEnd;
     }
 
     // Mouse
@@ -321,69 +344,48 @@ const WindowManager = (() => {
       onStart(e.clientX, e.clientY);
     });
 
-    document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-    document.addEventListener('mouseup', onEnd);
-
     // Touch
     handle.addEventListener('touchstart', e => {
       if (e.target.classList.contains('win-btn')) return;
       const t = e.touches[0];
       onStart(t.clientX, t.clientY);
     }, { passive: true });
-
-    document.addEventListener('touchmove', e => {
-      if (!dragging) return;
-      const t = e.touches[0];
-      onMove(t.clientX, t.clientY);
-    }, { passive: true });
-
-    document.addEventListener('touchend', onEnd);
   }
 
   /* ---- Resize ---- */
   function initResize(win, handle) {
-    let resizing = false;
     let startX, startY, startW, startH;
+
+    function onMove(cx, cy) {
+      const newW = Math.max(280, startW + (cx - startX));
+      const newH = Math.max(200, startH + (cy - startY));
+      win.style.width  = `${newW}px`;
+      win.style.height = `${newH}px`;
+    }
+
+    function onEnd() {
+      document.body.style.userSelect = '';
+      activeMoveHandler = null;
+      activeEndHandler  = null;
+    }
 
     function onStart(cx, cy) {
       if (win.classList.contains('maximized')) return;
-      resizing = true;
       startX = cx;
       startY = cy;
       startW = win.offsetWidth;
       startH = win.offsetHeight;
       document.body.style.userSelect = 'none';
-    }
-
-    function onMove(cx, cy) {
-      if (!resizing) return;
-      const newW = Math.max(280, startW + (cx - startX));
-      const newH = Math.max(200, startH + (cy - startY));
-      win.style.width = `${newW}px`;
-      win.style.height = `${newH}px`;
-    }
-
-    function onEnd() {
-      resizing = false;
-      document.body.style.userSelect = '';
+      activeMoveHandler = onMove;
+      activeEndHandler  = onEnd;
     }
 
     handle.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
-    document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-    document.addEventListener('mouseup', onEnd);
 
     handle.addEventListener('touchstart', e => {
       const t = e.touches[0];
       onStart(t.clientX, t.clientY);
     }, { passive: true });
-
-    document.addEventListener('touchmove', e => {
-      if (!resizing) return;
-      const t = e.touches[0];
-      onMove(t.clientX, t.clientY);
-    }, { passive: true });
-
-    document.addEventListener('touchend', onEnd);
   }
 
   /* ---- Public API ---- */
