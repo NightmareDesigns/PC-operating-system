@@ -443,9 +443,14 @@
 
       el.querySelector('#adm-clear-all')?.addEventListener('click', () => {
         if (!window.confirm('Clear ALL NightmareOS data and restart?')) return;
-        try { localStorage.clear(); } catch (_) {}
-        showNotification('Admin Panel', 'All data cleared. Restarting…');
-        setTimeout(() => { if (window.restartOS) restartOS(); }, 1500);
+        let cleared = false;
+        try { localStorage.clear(); cleared = true; } catch (_) {}
+        if (cleared) {
+          showNotification('Admin Panel', 'All data cleared. Restarting…');
+          setTimeout(() => { if (window.restartOS) restartOS(); }, 1500);
+        } else {
+          showNotification('Admin Panel', '⚠️ Could not clear storage — browser may be restricting access.');
+        }
       });
 
       el.querySelector('#adm-clear-notes')?.addEventListener('click', () => {

@@ -130,6 +130,7 @@
     let currentUrl = '';
     const navHistory = [];
     let navIdx = -1;
+    const FRAME_LOAD_TIMEOUT_MS = 5000;
     let loadTimer = null;
 
     /* ---- Normalize a URL or search query ---- */
@@ -196,7 +197,6 @@
       // Set a timeout — if the iframe doesn't fire 'load' within 10s, show blocked
       if (loadTimer) clearTimeout(loadTimer);
       loadTimer = setTimeout(() => {
-        // Try to detect if the frame loaded anything
         try {
           // Cross-origin will throw — if it throws, it did load (just cross-origin)
           const doc = frame.contentDocument;
@@ -211,7 +211,7 @@
           loadingEl.classList.add('hidden');
           if (status) status.textContent = url;
         }
-      }, 5000);
+      }, FRAME_LOAD_TIMEOUT_MS);
 
       frame.src = url;
 

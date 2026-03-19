@@ -169,6 +169,9 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
               <button class="win-toolbar-btn" id="sm-run-btn">▶ Run</button>
               <button class="win-toolbar-btn" id="sm-clear-editor-btn">🗑️</button>
             </div>
+            <div style="padding:4px 10px;font-size:0.7rem;color:#ffd60a;background:rgba(255,214,10,0.08);border-bottom:1px solid rgba(255,214,10,0.15);flex-shrink:0;">
+              ⚠️ Scripts run with full access to NightmareOS. Only run code you trust.
+            </div>
             <textarea class="sm-editor" id="sm-editor"
                       placeholder="// Write your JavaScript here…
 // You have access to all NightmareOS globals:
@@ -191,6 +194,9 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
                 <input type="checkbox" id="sm-intercept-log" />
                 Intercept console.log
               </label>
+            </div>
+            <div style="padding:4px 10px;font-size:0.7rem;color:#ffd60a;background:rgba(255,214,10,0.08);border-bottom:1px solid rgba(255,214,10,0.15);flex-shrink:0;">
+              ⚠️ Console executes JavaScript with full NightmareOS access. Only run code you trust.
             </div>
             <div class="sm-console" id="sm-console" role="log" aria-label="Console output" aria-live="polite"></div>
             <div class="sm-console-input-row">

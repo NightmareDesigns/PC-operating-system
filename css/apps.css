@@ -944,9 +944,12 @@
 .about-logo { font-size: 4rem; }
 
 .about-name {
-  font-size: 1.5rem;
-  font-weight: 300;
-  color: white;
+  font-family: var(--horror-font);
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--blood-red);
+  text-shadow: var(--blood-shadow);
 }
 
 .about-version {
@@ -2239,5 +2242,9 @@
 .appstore-win-opt > div { flex: 1; min-width: 0; }
 .appstore-win-opt small { color: var(--text-secondary); font-size: 0.7rem; }
 
-/* Boot screen green accent */
-#boot-screen .boot-logo h1 { color: #00ff41; text-shadow: 0 0 20px rgba(0,255,65,0.4); }
+/* Boot screen — override colour from green back to blood-red horror theme */
+#boot-screen .boot-logo h1 {
+  font-family: var(--horror-font);
+  color: var(--blood-red);
+  text-shadow: var(--blood-shadow);
+}

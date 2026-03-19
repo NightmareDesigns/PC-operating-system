@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>NightmareOS — Web Desktop Environment</title>
+  <!-- Preconnect for faster Google Fonts load -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Nosifer: dripping-blood horror font for NightmareOS titles -->
+  <link href="https://fonts.googleapis.com/css2?family=Nosifer&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/desktop.css" />
   <link rel="stylesheet" href="css/apps.css" />
 </head>
@@ -233,6 +238,12 @@
           <button class="start-app-item" data-app="appstore">
             <span>🏪</span><span>App Store</span>
           </button>
+          <button class="start-app-item" data-app="firefox">
+            <span>🦊</span><span>Firefox</span>
+          </button>
+          <button class="start-app-item" data-app="scriptmanager">
+            <span>📜</span><span>Scripts</span>
+          </button>
           <button class="start-app-item" data-app="adminpanel">
             <span>🛡️</span><span>Admin</span>
           </button>
@@ -273,6 +284,24 @@
   <script src="js/apps/videoplayer.js"></script>
   <script src="js/apps/adminpanel.js"></script>
   <script src="js/apps/appstore.js"></script>
+  <script src="js/apps/firefox.js"></script>
+  <script src="js/apps/scriptmanager.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/boot.js"></script>
+  <script>
+    /* Register service worker for proxy + offline caching */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(function(e) {
+          console.warn('[NightmareOS] SW registration failed:', e);
+          /* Show notification once the desktop is ready */
+          window.addEventListener('nightmareos-ready', function() {
+            if (window.showNotification) {
+              showNotification('NightmareOS', '⚠️ Proxy & offline features unavailable — service worker could not be registered.');
+            }
+          });
+        });
+    }
+  </script>
 </body>
 </html>
