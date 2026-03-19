@@ -32,3 +32,17 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Node / npm (if ever used for tooling)
+node_modules/
+dist/
+.cache/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Temp files
+/tmp/
