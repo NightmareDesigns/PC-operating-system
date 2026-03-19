@@ -23,8 +23,8 @@
     OS: 'NightOS 1.0.0',
   };
 
-  const HISTORY = [];
-  let histIdx = -1;
+  // Command history is now maintained per-terminal instance inside initTerm.
+  // See initTerm for instance-scoped HISTORY and histIdx.
 
   /* Virtual file tree */
   const VFS = {
