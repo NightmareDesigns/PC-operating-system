@@ -2198,6 +2198,8 @@
   border-top: 1px solid var(--border);
   background: rgba(0,0,0,0.2);
 }
+.appstore-win-info.collapsed .appstore-win-body { display: none; }
+.appstore-win-info.collapsed .appstore-win-header { border-bottom: none; }
 
 .appstore-win-header {
   display: flex;
@@ -2209,8 +2211,12 @@
   color: var(--text-primary);
   cursor: pointer;
   border-bottom: 1px solid var(--border);
+  user-select: none;
 }
+.appstore-win-header:hover { background: rgba(255,255,255,0.04); }
 .appstore-win-icon { font-size: 1rem; }
+.appstore-win-chevron { margin-left: auto; font-size: 0.7rem; color: var(--text-secondary); transition: transform 0.2s; }
+.appstore-win-info.collapsed .appstore-win-chevron { transform: rotate(-90deg); }
 
 .appstore-win-body {
   padding: 12px;
