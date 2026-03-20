@@ -99,11 +99,8 @@
           <button class="browser-open-tab-btn" id="br-open-tab">Open in New Browser Tab ↗</button>
           <button class="win-toolbar-btn" id="br-try-again" style="margin-top:6px;">↻ Try Again</button>
         </div>
-        <!-- Main iframe -->
-        <iframe class="browser-frame hidden" id="br-frame"
-                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-presentation"
-                title="Browser content" aria-label="Browser content frame"
-                referrerpolicy="no-referrer"></iframe>
+        <!-- Main iframe inserted dynamically (WindowManager sanitizer strips iframe tags) -->
+        <div id="br-frame-container" class="hidden" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
         <!-- Loading overlay -->
         <div class="browser-loading hidden" id="br-loading">
           <div class="browser-spinner"></div>
@@ -117,15 +114,27 @@
   }
 
   function initBrowser(el) {
-    const urlInput  = el.querySelector('#br-url');
-    const frame     = el.querySelector('#br-frame');
-    const blocked   = el.querySelector('#br-blocked');
-    const homeEl    = el.querySelector('#br-home-page');
-    const loadingEl = el.querySelector('#br-loading');
-    const status    = el.querySelector('#br-status');
-    const sslEl     = el.querySelector('#br-ssl');
-    const openTab   = el.querySelector('#br-open-tab');
-    const tryAgain  = el.querySelector('#br-try-again');
+    const urlInput      = el.querySelector('#br-url');
+    const frameContainer = el.querySelector('#br-frame-container');
+    const blocked       = el.querySelector('#br-blocked');
+    const homeEl        = el.querySelector('#br-home-page');
+    const loadingEl     = el.querySelector('#br-loading');
+    const status        = el.querySelector('#br-status');
+    const sslEl         = el.querySelector('#br-ssl');
+    const openTab       = el.querySelector('#br-open-tab');
+    const tryAgain      = el.querySelector('#br-try-again');
+
+    // Create iframe dynamically — the WindowManager sanitizer strips
+    // <iframe> elements from HTML strings, so we must build it in JS.
+    const frame = document.createElement('iframe');
+    frame.className = 'browser-frame';
+    frame.id = 'br-frame';
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.setAttribute('title', 'Browser content');
+    frame.setAttribute('aria-label', 'Browser content frame');
+    frame.setAttribute('referrerpolicy', 'no-referrer');
+    frame.style.cssText = 'flex:1;border:none;width:100%;height:100%;';
+    frameContainer.appendChild(frame);
 
     let currentUrl = '';
     const navHistory = [];
@@ -150,7 +159,7 @@
     /* ---- Show/hide views ---- */
     function showHome() {
       homeEl.classList.remove('hidden');
-      frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.add('hidden');
       loadingEl.classList.add('hidden');
       if (status) status.textContent = 'Home';
@@ -160,13 +169,13 @@
     function showFrame() {
       homeEl.classList.add('hidden');
       blocked.classList.add('hidden');
-      frame.classList.remove('hidden');
+      frameContainer.classList.remove('hidden');
       loadingEl.classList.remove('hidden');
     }
 
     function showBlocked(url) {
       homeEl.classList.add('hidden');
-      frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.remove('hidden');
       loadingEl.classList.add('hidden');
       if (openTab) openTab.dataset.url = url;
@@ -213,7 +222,7 @@
         }
       }, FRAME_LOAD_TIMEOUT_MS);
 
-      frame.src = url;
+      frame.src = '/nmproxy?' + new URLSearchParams({ url }).toString();
 
       // Update title
       const titleEl = el.querySelector('.window-title');
