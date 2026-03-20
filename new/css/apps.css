@@ -5,7 +5,9 @@
 /* ---- Window ---- */
 .window {
   position: absolute;
-  background: var(--bg-mid);
+  background: rgba(26, 29, 39, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
@@ -15,13 +17,19 @@
   min-width: 280px;
   min-height: 200px;
   z-index: 100;
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
   outline: none;
+  animation: window-open 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes window-open {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .window.focused {
   border-color: rgba(79,142,247,0.3);
-  box-shadow: 0 24px 70px rgba(0,0,0,0.7), 0 0 0 1px rgba(79,142,247,0.15);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.7), 0 0 0 1px rgba(79,142,247,0.15), 0 0 30px rgba(79,142,247,0.05);
 }
 
 .window.minimized { display: none; }
@@ -52,7 +60,7 @@
   align-items: center;
   padding: 0 12px;
   height: 38px;
-  background: rgba(255,255,255,0.04);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   gap: 8px;
