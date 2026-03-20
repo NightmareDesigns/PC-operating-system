@@ -14,8 +14,24 @@
 </head>
 <body>
 
+  <!-- BIOS POST Screen -->
+  <div id="post-screen" class="hidden">
+    <div class="post-output" id="post-output"></div>
+  </div>
+
+  <!-- Bootloader -->
+  <div id="bootloader-screen" class="hidden">
+    <div class="bootloader-header">NightmareOS GRUB Bootloader v2.06</div>
+    <div class="bootloader-menu">
+      <div class="bootloader-entry selected" data-entry="0">NightmareOS 2.0 (kernel 6.2.0-nm)</div>
+      <div class="bootloader-entry" data-entry="1">NightmareOS 2.0 (recovery mode)</div>
+      <div class="bootloader-entry" data-entry="2">Memory diagnostic tool</div>
+    </div>
+    <div class="bootloader-help">Use ↑ and ↓ to select, Enter to boot. Auto-boot in <span id="bootloader-timer">5</span>s</div>
+  </div>
+
   <!-- Boot Screen -->
-  <div id="boot-screen">
+  <div id="boot-screen" class="hidden">
     <div class="boot-logo">
       <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="40" cy="40" r="38" stroke="#00ff41" stroke-width="3"/>
@@ -261,6 +277,11 @@
     <div id="notification-area" aria-live="polite" aria-atomic="true"></div>
 
   </div><!-- /desktop -->
+
+  <!-- Shutdown Screen -->
+  <div id="shutdown-screen" class="hidden">
+    <div class="shutdown-output" id="shutdown-output"></div>
+  </div>
 
   <!-- Window Templates are created dynamically by JS -->
 
