@@ -22,6 +22,38 @@
     { label: '📦 NPM',         url: 'https://npmjs.com',              cat: 'dev' },
   ];
 
+  const BOOKMARKS_KEY = 'nightmareos_bookmarks';
+
+  /* ---- User bookmark helpers ---- */
+  function loadUserBookmarks() {
+    try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) ?? '[]'); }
+    catch (_) { return []; }
+  }
+
+  function saveUserBookmarks(list) {
+    try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list)); }
+    catch (_) { /* quota exceeded */ }
+  }
+
+  /**
+   * Parse a Netscape Bookmark File (HTML) exported by Chrome, Firefox, Edge, etc.
+   * Extracts every <A HREF="…">label</A> entry and returns an array of {label, url}.
+   */
+  function parseBookmarkHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const anchors = doc.querySelectorAll('a[href]');
+    const results = [];
+    anchors.forEach(a => {
+      const url = a.getAttribute('href') || '';
+      const label = (a.textContent || '').trim();
+      if (url && label && /^https?:\/\//i.test(url)) {
+        results.push({ label, url });
+      }
+    });
+    return results;
+  }
+
   function open() {
     const el = WindowManager.create({
       id: 'webbrowser',
@@ -52,6 +84,9 @@
       </div>
       <div class="win-toolbar" style="flex-wrap:wrap;gap:4px;padding:4px 8px;">
         ${bookmarkBtns}
+        <span id="br-user-bookmarks"></span>
+        <button class="win-toolbar-btn browser-import-btn" id="br-import-bookmarks"
+                title="Import bookmarks from HTML file" aria-label="Import bookmarks">📥 Import</button>
       </div>
       <div id="br-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;">
         <!-- Homepage (shown when no URL is loaded) -->
@@ -159,7 +194,7 @@
     /* ---- Show/hide views ---- */
     function showHome() {
       homeEl.classList.remove('hidden');
-      frameContainer.classList.add('hidden');
+      if (frame) frame.classList.add('hidden');
       blocked.classList.add('hidden');
       loadingEl.classList.add('hidden');
       if (status) status.textContent = 'Home';
@@ -169,13 +204,13 @@
     function showFrame() {
       homeEl.classList.add('hidden');
       blocked.classList.add('hidden');
-      frameContainer.classList.remove('hidden');
+      if (frame) frame.classList.remove('hidden');
       loadingEl.classList.remove('hidden');
     }
 
     function showBlocked(url) {
       homeEl.classList.add('hidden');
-      frameContainer.classList.add('hidden');
+      if (frame) frame.classList.add('hidden');
       blocked.classList.remove('hidden');
       loadingEl.classList.add('hidden');
       if (openTab) openTab.dataset.url = url;
@@ -205,24 +240,26 @@
 
       // Set a timeout — if the iframe doesn't fire 'load' within 10s, show blocked
       if (loadTimer) clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => {
-        try {
-          // Cross-origin will throw — if it throws, it did load (just cross-origin)
-          const doc = frame.contentDocument;
-          if (!doc || doc.body === null || doc.body.innerHTML === '') {
-            showBlocked(url);
-          } else {
+      if (frame) {
+        loadTimer = setTimeout(() => {
+          try {
+            // Cross-origin will throw — if it throws, it did load (just cross-origin)
+            const doc = frame.contentDocument;
+            if (!doc || doc.body === null || doc.body.innerHTML === '') {
+              showBlocked(url);
+            } else {
+              loadingEl.classList.add('hidden');
+              if (status) status.textContent = url;
+            }
+          } catch (_) {
+            // Cross-origin exception = page loaded successfully but in a different origin
             loadingEl.classList.add('hidden');
             if (status) status.textContent = url;
           }
-        } catch (_) {
-          // Cross-origin exception = page loaded successfully but in a different origin
-          loadingEl.classList.add('hidden');
-          if (status) status.textContent = url;
-        }
-      }, FRAME_LOAD_TIMEOUT_MS);
+        }, FRAME_LOAD_TIMEOUT_MS);
 
-      frame.src = url;
+        frame.src = url;
+      }
 
       // Update title
       const titleEl = el.querySelector('.window-title');
@@ -244,24 +281,26 @@
     }
 
     /* ---- Frame events ---- */
-    frame.addEventListener('load', () => {
-      if (loadTimer) clearTimeout(loadTimer);
-      loadingEl.classList.add('hidden');
-      // Try to detect blocked (about:blank loaded instead of real page)
-      try {
-        const doc = frame.contentDocument;
-        if (doc && doc.location && doc.location.href === 'about:blank' && currentUrl !== 'about:blank') {
-          showBlocked(currentUrl);
-          return;
-        }
-      } catch (_) { /* cross-origin — page loaded fine */ }
-      if (status) status.textContent = currentUrl || 'Ready';
-    });
+    if (frame) {
+      frame.addEventListener('load', () => {
+        if (loadTimer) clearTimeout(loadTimer);
+        loadingEl.classList.add('hidden');
+        // Try to detect blocked (about:blank loaded instead of real page)
+        try {
+          const doc = frame.contentDocument;
+          if (doc && doc.location && doc.location.href === 'about:blank' && currentUrl !== 'about:blank') {
+            showBlocked(currentUrl);
+            return;
+          }
+        } catch (_) { /* cross-origin — page loaded fine */ }
+        if (status) status.textContent = currentUrl || 'Ready';
+      });
 
-    frame.addEventListener('error', () => {
-      if (loadTimer) clearTimeout(loadTimer);
-      showBlocked(currentUrl);
-    });
+      frame.addEventListener('error', () => {
+        if (loadTimer) clearTimeout(loadTimer);
+        showBlocked(currentUrl);
+      });
+    }
 
     /* ---- Controls ---- */
     el.querySelector('#br-back').addEventListener('click', goBack);
@@ -287,6 +326,50 @@
     // Bookmarks
     el.querySelectorAll('.browser-bookmark').forEach(btn => {
       btn.addEventListener('click', () => navigate(btn.dataset.url));
+    });
+
+    // User bookmarks — render from localStorage and wire clicks
+    const userBmContainer = el.querySelector('#br-user-bookmarks');
+    function renderUserBookmarks() {
+      if (!userBmContainer) return;
+      const list = loadUserBookmarks();
+      userBmContainer.innerHTML = list.map(b =>
+        `<button class="win-toolbar-btn browser-bookmark browser-user-bookmark" data-url="${escHtml(b.url)}" title="${escHtml(b.url)}">${escHtml(b.label)}</button>`
+      ).join('');
+      userBmContainer.querySelectorAll('.browser-user-bookmark').forEach(btn => {
+        btn.addEventListener('click', () => navigate(btn.dataset.url));
+      });
+    }
+    renderUserBookmarks();
+
+    // Import bookmarks from HTML file
+    el.querySelector('#br-import-bookmarks').addEventListener('click', () => {
+      const inp = Object.assign(document.createElement('input'), {
+        type: 'file',
+        accept: '.html,.htm,text/html',
+      });
+      inp.addEventListener('change', () => {
+        const f = inp.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const parsed = parseBookmarkHtml(ev.target.result);
+          if (!parsed.length) {
+            if (typeof showNotification === 'function')
+              showNotification('Browser', 'No bookmarks found in file.');
+            return;
+          }
+          const existing = loadUserBookmarks();
+          const urls = new Set(existing.map(b => b.url));
+          const added = parsed.filter(b => !urls.has(b.url));
+          saveUserBookmarks(existing.concat(added));
+          renderUserBookmarks();
+          if (typeof showNotification === 'function')
+            showNotification('Browser', `Imported ${added.length} bookmark${added.length === 1 ? '' : 's'}.`);
+        };
+        reader.readAsText(f);
+      });
+      inp.click();
     });
 
     // Open in new tab button (blocked page)
