@@ -881,6 +881,41 @@ html, body {
   opacity: 0.6;
 }
 
+.nc-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nc-item-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.nc-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  background: var(--accent);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 0 3px;
+  pointer-events: none;
+}
+
+.tray-clock {
+  position: relative;
+}
+
 /* ---- Mobile / Responsive ---- */
 @media (max-width: 600px) {
   #desktop-icons {

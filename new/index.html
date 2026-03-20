@@ -167,9 +167,10 @@
         <span class="tray-item" id="tray-battery" title="Battery" aria-label="Battery">🔋</span>
         <span class="tray-item" id="tray-wifi" title="Network" aria-label="Network">📶</span>
         <span class="tray-item" id="tray-volume" title="Volume" aria-label="Volume">🔊</span>
-        <div class="tray-clock">
+        <div class="tray-clock" title="Click for Notification Center">
           <div id="tray-time" aria-live="polite"></div>
           <div id="tray-date" aria-live="polite"></div>
+          <span class="nc-badge hidden" id="nc-badge" aria-label="Notification count">0</span>
         </div>
       </div>
     </div>
@@ -257,8 +258,19 @@
       </div>
     </div>
 
-    <!-- Notification Area -->
+    <!-- Notification Area (toasts) -->
     <div id="notification-area" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Notification Center (panel) -->
+    <div id="notification-center" role="dialog" aria-label="Notification Center">
+      <div class="nc-header">
+        <span class="nc-title">Notifications</span>
+        <button class="nc-clear-btn" id="nc-clear-btn" aria-label="Clear all notifications">Clear All</button>
+      </div>
+      <div class="nc-list" id="nc-list">
+        <div class="nc-empty">No notifications</div>
+      </div>
+    </div>
 
   </div><!-- /desktop -->
 

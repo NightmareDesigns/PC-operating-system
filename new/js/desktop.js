@@ -70,6 +70,9 @@ function showNotification(title, body, duration = 3500) {
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     setTimeout(() => el.remove(), 320);
   }, duration);
+
+  /* Log to Notification Center */
+  addToNotificationCenter(title, body);
 }
 
 function escHtml(str) {
@@ -78,6 +81,79 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/* ---- Notification Center ---- */
+function addToNotificationCenter(title, body) {
+  const list = $('nc-list');
+  if (!list) return;
+
+  /* Remove "No notifications" placeholder */
+  const empty = list.querySelector('.nc-empty');
+  if (empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = 'nc-item';
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  item.innerHTML = `
+    <div class="nc-item-header">
+      <span class="nc-item-title">${escHtml(title)}</span>
+      <span class="nc-item-time">${escHtml(time)}</span>
+    </div>
+    <div class="nc-item-body">${escHtml(body)}</div>`;
+  list.prepend(item);
+
+  /* Update badge count */
+  updateNCBadge();
+}
+
+function updateNCBadge() {
+  const list = $('nc-list');
+  const badge = $('nc-badge');
+  if (!list || !badge) return;
+  const count = list.querySelectorAll('.nc-item').length;
+  if (count > 0) {
+    badge.textContent = count > 9 ? '9+' : count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function clearNotificationCenter() {
+  const list = $('nc-list');
+  if (!list) return;
+  list.innerHTML = '<div class="nc-empty">No notifications</div>';
+  updateNCBadge();
+}
+
+function toggleNotificationCenter() {
+  const nc = $('notification-center');
+  if (!nc) return;
+  nc.classList.toggle('open');
+}
+
+function initNotificationCenter() {
+  const clockArea = document.querySelector('.tray-clock');
+  if (clockArea) {
+    clockArea.style.cursor = 'pointer';
+    clockArea.addEventListener('click', toggleNotificationCenter);
+  }
+
+  const clearBtn = $('nc-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearNotificationCenter);
+  }
+
+  /* Close when clicking outside */
+  document.addEventListener('click', (e) => {
+    const nc = $('notification-center');
+    if (!nc || !nc.classList.contains('open')) return;
+    if (!nc.contains(e.target) && !e.target.closest('.tray-clock')) {
+      nc.classList.remove('open');
+    }
+  });
 }
 
 /* ---- Clock ---- */
@@ -374,6 +450,7 @@ function initDesktop() {
   initContextMenu();
   initStartMenu();
   initGlobalShortcuts();
+  initNotificationCenter();
   // Render persisted sticky notes
   if (window.StickyNotes) window.StickyNotes.renderSaved();
   showNotification('NightmareOS', `Welcome, ${NightOS.username}! ` +
