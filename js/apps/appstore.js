@@ -78,10 +78,11 @@
           <div class="appstore-cats">${catBtns}</div>
         </div>
         <div class="appstore-grid" id="appstore-grid">${appCards}</div>
-        <div class="appstore-win-info" id="appstore-win-panel">
-          <div class="appstore-win-header">
+        <div class="appstore-win-info collapsed" id="appstore-win-panel">
+          <div class="appstore-win-header" role="button" tabindex="0" aria-expanded="false">
             <span class="appstore-win-icon">🖥️</span>
             <span>Windows Software Compatibility</span>
+            <span class="appstore-win-chevron">▼</span>
           </div>
           <div class="appstore-win-body">
             <p>NightmareOS runs entirely in your web browser. It <strong>cannot natively execute</strong>
@@ -154,6 +155,23 @@
     });
 
     search.addEventListener('input', filter);
+
+    // Toggle Windows Compatibility panel
+    const winPanel = el.querySelector('#appstore-win-panel');
+    const winHeader = el.querySelector('.appstore-win-header');
+    if (winHeader && winPanel) {
+      function togglePanel() {
+        winPanel.classList.toggle('collapsed');
+        winHeader.setAttribute('aria-expanded', String(!winPanel.classList.contains('collapsed')));
+      }
+      winHeader.addEventListener('click', togglePanel);
+      winHeader.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          togglePanel();
+        }
+      });
+    }
 
     // Open in new tab
     el.querySelectorAll('.appstore-open-btn').forEach(btn => {

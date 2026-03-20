@@ -168,4 +168,20 @@
   window.StickyNotes = { add: addNote, renderSaved: renderSavedNotes, load: loadNotes };
 
   loadNotes();
+
+  /* ---- Register with NightOS so it appears as a launchable app ---- */
+  function open() {
+    const desktop = document.getElementById('desktop');
+    const cx = desktop ? Math.round(desktop.offsetWidth / 2 - 100) : 200;
+    const cy = desktop ? Math.round(desktop.offsetHeight / 2 - 80) : 150;
+    // addNote offsets its argument by (-10, -20), so compensate to place
+    // the note at the intended center position.
+    addNote(cx + 10, cy + 20);
+  }
+
+  NightOS.registerApp('stickynotes', {
+    title: 'Sticky Notes',
+    icon: '📌',
+    open,
+  });
 })();

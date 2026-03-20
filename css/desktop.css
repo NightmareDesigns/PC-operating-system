@@ -129,6 +129,97 @@ html, body {
   min-height: 1.2em;
 }
 
+/* ---- BIOS POST Screen ---- */
+#post-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 10000;
+  padding: 20px;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.post-output {
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.post-output .post-ok { color: #00ff41; }
+.post-output .post-warn { color: #f5a623; }
+.post-output .post-title { color: #fff; font-weight: bold; }
+
+/* ---- Bootloader Screen ---- */
+#bootloader-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Courier, monospace;
+  color: #aaa;
+}
+
+.bootloader-header {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 24px;
+  letter-spacing: 0.04em;
+}
+
+.bootloader-menu {
+  border: 1px solid #444;
+  padding: 4px 0;
+  min-width: 420px;
+  background: #111;
+}
+
+.bootloader-entry {
+  padding: 6px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.bootloader-entry.selected {
+  background: #aaa;
+  color: #000;
+}
+
+.bootloader-help {
+  margin-top: 20px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ---- Shutdown Screen ---- */
+#shutdown-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 10000;
+  padding: 20px;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.shutdown-output {
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.shutdown-output .sd-ok { color: #00ff41; }
+.shutdown-output .sd-warn { color: #f5a623; }
+
 /* ---- Login Screen ---- */
 #login-screen {
   position: fixed;
