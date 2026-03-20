@@ -164,7 +164,7 @@
     const frame = document.createElement('iframe');
     frame.className = 'browser-frame';
     frame.id = 'br-frame';
-    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-presentation');
     frame.setAttribute('title', 'Browser content');
     frame.setAttribute('aria-label', 'Browser content frame');
     frame.setAttribute('referrerpolicy', 'no-referrer');
