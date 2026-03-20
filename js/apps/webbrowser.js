@@ -465,7 +465,7 @@
     }
 
     function formatHistoryTime(ts) {
-      if (!ts) return '';
+      if (!ts || ts > Date.now()) return '';
       const d = new Date(ts);
       const now = new Date();
       if (d.toDateString() === now.toDateString()) {

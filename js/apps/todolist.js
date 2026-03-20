@@ -64,6 +64,8 @@
     const priorityEl = el.querySelector('#todo-priority');
     const countEl = el.querySelector('#todo-count');
 
+    let todoIdCounter = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
+
     function render() {
       const filtered = todos.filter(t => {
         if (filter === 'active') return !t.done;
@@ -103,7 +105,7 @@
     function addTodo() {
       const text = inputEl.value.trim();
       if (!text) return;
-      const id = Date.now();
+      const id = todoIdCounter++;
       todos.push({ id, text, priority: priorityEl.value, done: false });
       saveTodos(todos);
       inputEl.value = '';

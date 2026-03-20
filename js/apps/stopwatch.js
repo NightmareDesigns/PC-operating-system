@@ -100,7 +100,7 @@
         // Start
         swStart = performance.now();
         swRunning = true;
-        swInterval = setInterval(updateSwDisplay, 30);
+        swInterval = setInterval(updateSwDisplay, 50);
         startBtn.textContent = '⏸ Pause';
         lapBtn.disabled = false;
         resetBtn.disabled = false;
