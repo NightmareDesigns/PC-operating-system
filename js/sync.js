@@ -43,6 +43,9 @@ const WorkspaceSync = (function () {
       stickyNotes:    safeGet('nightos_stickynotes',           []),
       calendarEvents: safeGet('nightmareos_calendar_events',   {}),
       termHistory:    safeGet('nightmareos_term_history',      []),
+      browserHistory: safeGet('nightmareos_browser_history',   []),
+      todos:          safeGet('nightmareos_todos',             []),
+      savedColors:    safeGet('nightmareos_saved_colors',      []),
     };
     return ws;
   }
@@ -88,6 +91,9 @@ const WorkspaceSync = (function () {
     if (ws.calendarEvents && typeof ws.calendarEvents === 'object')
       safeSet('nightmareos_calendar_events', ws.calendarEvents);
     if (Array.isArray(ws.termHistory))           safeSet('nightmareos_term_history', ws.termHistory);
+    if (Array.isArray(ws.browserHistory))        safeSet('nightmareos_browser_history', ws.browserHistory);
+    if (Array.isArray(ws.todos))                 safeSet('nightmareos_todos', ws.todos);
+    if (Array.isArray(ws.savedColors))           safeSet('nightmareos_saved_colors', ws.savedColors);
   }
 
   /* ── 1. Export / Import file ──────────────────────────────────────── */

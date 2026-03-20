@@ -26,7 +26,10 @@
           <div class="settings-nav-item active" data-panel="appearance">🎨 Appearance</div>
           <div class="settings-nav-item" data-panel="system">🖥️ System</div>
           <div class="settings-nav-item" data-panel="sound">🔊 Sound</div>
+          <div class="settings-nav-item" data-panel="notifications">🔔 Notifications</div>
+          <div class="settings-nav-item" data-panel="privacy">🔒 Privacy</div>
           <div class="settings-nav-item" data-panel="accessibility">♿ Accessibility</div>
+          <div class="settings-nav-item" data-panel="shortcuts">⌨️ Shortcuts</div>
           <div class="settings-nav-item" data-panel="about">ℹ️ About</div>
         </nav>
         <div class="settings-panel" id="settings-panel-content">
@@ -173,6 +176,104 @@
       </div>`;
   }
 
+  function buildNotificationsPanel() {
+    return `
+      <div class="settings-section">
+        <h3>Notifications</h3>
+        <div class="settings-row">
+          <div class="settings-label">Desktop Notifications<small>Show popup notifications</small></div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-notif-enabled" ${NightOS.settings.notifications !== false ? 'checked' : ''} />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Notification Duration<small>How long notifications stay visible</small></div>
+          <select class="settings-select" id="setting-notif-duration">
+            <option value="2000" ${NightOS.settings.notifDuration === 2000 ? 'selected' : ''}>Short (2s)</option>
+            <option value="3500" ${!NightOS.settings.notifDuration || NightOS.settings.notifDuration === 3500 ? 'selected' : ''}>Normal (3.5s)</option>
+            <option value="6000" ${NightOS.settings.notifDuration === 6000 ? 'selected' : ''}>Long (6s)</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Sound on Notification<small>Play a sound for each notification</small></div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-notif-sound" ${NightOS.settings.notifSound ? 'checked' : ''} />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>`;
+  }
+
+  function buildPrivacyPanel() {
+    let storageUsed = '–';
+    try {
+      let total = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        total += (key.length + (localStorage.getItem(key) || '').length) * 2;
+      }
+      if (total < 1024) storageUsed = total + ' B';
+      else if (total < 1024 * 1024) storageUsed = (total / 1024).toFixed(1) + ' KB';
+      else storageUsed = (total / (1024 * 1024)).toFixed(2) + ' MB';
+    } catch (_) {}
+
+    return `
+      <div class="settings-section">
+        <h3>Privacy &amp; Storage</h3>
+        <div class="settings-row">
+          <div class="settings-label">LocalStorage Used<small>Data stored by NightmareOS</small></div>
+          <span style="font-size:0.82rem;color:var(--text-primary)">${storageUsed}</span>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Clear Browser History<small>Remove all browsing history</small></div>
+          <button class="win-toolbar-btn" id="btn-clear-history" style="min-width:100px;">Clear History</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Clear Terminal History<small>Remove saved terminal commands</small></div>
+          <button class="win-toolbar-btn" id="btn-clear-term-history" style="min-width:100px;">Clear History</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Clear Todo List<small>Remove all saved tasks</small></div>
+          <button class="win-toolbar-btn" id="btn-clear-todos" style="min-width:100px;">Clear Todos</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Clear Saved Colors<small>Remove color picker history</small></div>
+          <button class="win-toolbar-btn" id="btn-clear-colors" style="min-width:100px;">Clear Colors</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Clear All Data<small>Resets NightmareOS to defaults</small></div>
+          <button class="win-toolbar-btn" id="btn-clear-all" style="min-width:100px;color:#ef4444;">Clear All</button>
+        </div>
+      </div>`;
+  }
+
+  function buildShortcutsPanel() {
+    const shortcuts = [
+      ['Ctrl/Cmd + Alt + T', 'Open Terminal'],
+      ['Ctrl/Cmd + Alt + F', 'Open Firefox Launcher'],
+      ['Ctrl/Cmd + Alt + S', 'Open Script Manager'],
+      ['Enter', 'Sign in (Login Screen)'],
+      ['Escape', 'Close Start Menu / Context Menu'],
+      ['Ctrl + C', 'Cancel command (Terminal)'],
+      ['Ctrl + L', 'Clear screen (Terminal)'],
+      ['Arrow Up/Down', 'Navigate command history (Terminal)'],
+    ];
+
+    return `
+      <div class="settings-section">
+        <h3>Keyboard Shortcuts</h3>
+        <table class="shortcuts-table">
+          <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+          <tbody>
+            ${shortcuts.map(([key, action]) =>
+              `<tr><td><kbd>${escHtml(key)}</kbd></td><td>${escHtml(action)}</td></tr>`
+            ).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
   function buildAboutPanel() {
     return `
       <div class="about-panel">
@@ -203,7 +304,10 @@
     appearance: buildAppearancePanel,
     system:     buildSystemPanel,
     sound:      buildSoundPanel,
+    notifications: buildNotificationsPanel,
+    privacy:    buildPrivacyPanel,
     accessibility: buildAccessibilityPanel,
+    shortcuts:  buildShortcutsPanel,
     about:      buildAboutPanel,
   };
 
@@ -340,6 +444,71 @@
       if (reduceMotion) {
         reduceMotion.addEventListener('change', () => {
           document.documentElement.classList.toggle('reduce-motion', reduceMotion.checked);
+        });
+      }
+    }
+
+    if (panel === 'notifications') {
+      const notifEnabled = panelEl.querySelector('#setting-notif-enabled');
+      if (notifEnabled) {
+        notifEnabled.addEventListener('change', () => {
+          NightOS.settings.notifications = notifEnabled.checked;
+          saveSettings();
+        });
+      }
+      const notifDuration = panelEl.querySelector('#setting-notif-duration');
+      if (notifDuration) {
+        notifDuration.addEventListener('change', () => {
+          NightOS.settings.notifDuration = parseInt(notifDuration.value, 10);
+          saveSettings();
+        });
+      }
+      const notifSound = panelEl.querySelector('#setting-notif-sound');
+      if (notifSound) {
+        notifSound.addEventListener('change', () => {
+          NightOS.settings.notifSound = notifSound.checked;
+          saveSettings();
+        });
+      }
+    }
+
+    if (panel === 'privacy') {
+      const clearHistory = panelEl.querySelector('#btn-clear-history');
+      if (clearHistory) {
+        clearHistory.addEventListener('click', () => {
+          try { localStorage.removeItem('nightmareos_browser_history'); } catch (_) {}
+          showNotification('Settings', 'Browsing history cleared.');
+        });
+      }
+      const clearTermHistory = panelEl.querySelector('#btn-clear-term-history');
+      if (clearTermHistory) {
+        clearTermHistory.addEventListener('click', () => {
+          try { localStorage.removeItem('nightmareos_term_history'); } catch (_) {}
+          showNotification('Settings', 'Terminal history cleared.');
+        });
+      }
+      const clearTodos = panelEl.querySelector('#btn-clear-todos');
+      if (clearTodos) {
+        clearTodos.addEventListener('click', () => {
+          try { localStorage.removeItem('nightmareos_todos'); } catch (_) {}
+          showNotification('Settings', 'Todo list cleared.');
+        });
+      }
+      const clearColors = panelEl.querySelector('#btn-clear-colors');
+      if (clearColors) {
+        clearColors.addEventListener('click', () => {
+          try { localStorage.removeItem('nightmareos_saved_colors'); } catch (_) {}
+          showNotification('Settings', 'Saved colors cleared.');
+        });
+      }
+      const clearAll = panelEl.querySelector('#btn-clear-all');
+      if (clearAll) {
+        clearAll.addEventListener('click', () => {
+          if (window.confirm('Clear ALL NightmareOS data and restart?')) {
+            try { localStorage.clear(); } catch (_) {}
+            showNotification('Settings', 'All data cleared. Restarting…');
+            setTimeout(() => restartOS(), 1500);
+          }
         });
       }
     }
