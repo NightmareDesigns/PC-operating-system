@@ -222,7 +222,7 @@
         }
       }, FRAME_LOAD_TIMEOUT_MS);
 
-      frame.src = '/nmproxy?' + new URLSearchParams({ url }).toString();
+      frame.src = url;
 
       // Update title
       const titleEl = el.querySelector('.window-title');
