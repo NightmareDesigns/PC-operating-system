@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NightmareOS — Web Desktop Environment</title>
+  <!-- Preconnect for faster Google Fonts load -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Nosifer: dripping-blood horror font for NightmareOS titles -->
+  <link href="https://fonts.googleapis.com/css2?family=Nosifer&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/desktop.css" />
+  <link rel="stylesheet" href="css/apps.css" />
+</head>
+<body>
+
+  <!-- Boot Screen -->
+  <div id="boot-screen">
+    <div class="boot-logo">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="38" stroke="#00ff41" stroke-width="3"/>
+        <path d="M40 14 L54 34 H26 Z" fill="#00ff41"/>
+        <path d="M40 66 L26 46 H54 Z" fill="#00ff41" opacity="0.6"/>
+        <circle cx="40" cy="40" r="8" fill="#00ff41"/>
+      </svg>
+      <h1>NightmareOS</h1>
+      <p>Web Desktop Environment</p>
+    </div>
+    <div class="boot-progress-wrap">
+      <div class="boot-progress-bar" id="boot-bar"></div>
+    </div>
+    <p class="boot-status" id="boot-status">Initializing system…</p>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="hidden">
+    <div class="login-card">
+      <div class="login-avatar">👤</div>
+      <h2 class="login-user">User</h2>
+      <input type="password" id="login-password" class="login-input" placeholder="Password (leave blank)" autocomplete="current-password" />
+      <button class="login-btn" id="login-btn">Sign In →</button>
+      <p class="login-hint">Press Enter or leave blank to sign in</p>
+    </div>
+    <div class="login-datetime" id="login-datetime"></div>
+  </div>
+
+  <!-- Desktop -->
+  <div id="desktop" class="hidden">
+
+    <!-- Wallpaper -->
+    <div id="wallpaper"></div>
+
+    <!-- Desktop Icons -->
+    <div id="desktop-icons">
+      <div class="desktop-icon" data-app="filemanager" tabindex="0" role="button" aria-label="File Manager">
+        <span class="icon-img">📁</span>
+        <span class="icon-label">Files</span>
+      </div>
+      <div class="desktop-icon" data-app="texteditor" tabindex="0" role="button" aria-label="Text Editor">
+        <span class="icon-img">📝</span>
+        <span class="icon-label">Text Editor</span>
+      </div>
+      <div class="desktop-icon" data-app="calculator" tabindex="0" role="button" aria-label="Calculator">
+        <span class="icon-img">🔢</span>
+        <span class="icon-label">Calculator</span>
+      </div>
+      <div class="desktop-icon" data-app="terminal" tabindex="0" role="button" aria-label="Terminal">
+        <span class="icon-img">💻</span>
+        <span class="icon-label">Terminal</span>
+      </div>
+      <div class="desktop-icon" data-app="webbrowser" tabindex="0" role="button" aria-label="Web Browser">
+        <span class="icon-img">🌐</span>
+        <span class="icon-label">Browser</span>
+      </div>
+      <div class="desktop-icon" data-app="settings" tabindex="0" role="button" aria-label="Settings">
+        <span class="icon-img">⚙️</span>
+        <span class="icon-label">Settings</span>
+      </div>
+      <div class="desktop-icon" data-app="imagegallery" tabindex="0" role="button" aria-label="Image Gallery">
+        <span class="icon-img">🖼️</span>
+        <span class="icon-label">Gallery</span>
+      </div>
+      <div class="desktop-icon" data-app="matrix" tabindex="0" role="button" aria-label="Matrix Rain">
+        <span class="icon-img">🟩</span>
+        <span class="icon-label">Matrix Rain</span>
+      </div>
+      <div class="desktop-icon" data-app="paint" tabindex="0" role="button" aria-label="Paint">
+        <span class="icon-img">🎨</span>
+        <span class="icon-label">Paint</span>
+      </div>
+      <div class="desktop-icon" data-app="snake" tabindex="0" role="button" aria-label="Snake">
+        <span class="icon-img">🐍</span>
+        <span class="icon-label">Snake</span>
+      </div>
+      <div class="desktop-icon" data-app="musicplayer" tabindex="0" role="button" aria-label="Music Player">
+        <span class="icon-img">🎵</span>
+        <span class="icon-label">Music</span>
+      </div>
+      <div class="desktop-icon" data-app="calendar" tabindex="0" role="button" aria-label="Calendar">
+        <span class="icon-img">📅</span>
+        <span class="icon-label">Calendar</span>
+      </div>
+      <div class="desktop-icon" data-app="videoplayer" tabindex="0" role="button" aria-label="Video Player">
+        <span class="icon-img">🎬</span>
+        <span class="icon-label">Videos</span>
+      </div>
+      <div class="desktop-icon" data-app="sysmonitor" tabindex="0" role="button" aria-label="System Monitor">
+        <span class="icon-img">📊</span>
+        <span class="icon-label">Monitor</span>
+      </div>
+      <div class="desktop-icon" data-app="appstore" tabindex="0" role="button" aria-label="App Store">
+        <span class="icon-img">🏪</span>
+        <span class="icon-label">App Store</span>
+      </div>
+      <div class="desktop-icon" data-app="firefox" tabindex="0" role="button" aria-label="Firefox">
+        <span class="icon-img">🦊</span>
+        <span class="icon-label">Firefox</span>
+      </div>
+      <div class="desktop-icon" data-app="scriptmanager" tabindex="0" role="button" aria-label="Script Manager">
+        <span class="icon-img">📜</span>
+        <span class="icon-label">Scripts</span>
+      </div>
+      <div class="desktop-icon" data-app="adminpanel" tabindex="0" role="button" aria-label="Admin Panel">
+        <span class="icon-img">🛡️</span>
+        <span class="icon-label">Admin</span>
+      </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden" role="menu">
+      <ul>
+        <li data-action="new-folder" role="menuitem">📁 New Folder</li>
+        <li data-action="new-file" role="menuitem">📄 New File</li>
+        <li data-action="new-sticky" role="menuitem">📌 New Sticky Note</li>
+        <li class="separator" role="separator"></li>
+        <li data-action="change-wallpaper" role="menuitem">🖼️ Change Wallpaper</li>
+        <li data-action="matrix-wallpaper" role="menuitem">🟩 Matrix Wallpaper</li>
+        <li data-action="settings" role="menuitem">⚙️ Settings</li>
+        <li class="separator" role="separator"></li>
+        <li data-action="refresh" role="menuitem">🔄 Refresh</li>
+      </ul>
+    </div>
+
+    <!-- Window Container -->
+    <div id="window-container"></div>
+
+    <!-- Taskbar -->
+    <div id="taskbar" role="navigation" aria-label="Taskbar">
+      <!-- Start Button -->
+      <button class="taskbar-start" id="start-btn" aria-haspopup="true" aria-expanded="false">
+        <span class="start-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="9" stroke="#00ff41" stroke-width="1.5"/>
+            <path d="M10 4L13.5 9H6.5Z" fill="#00ff41"/>
+            <path d="M10 16L6.5 11H13.5Z" fill="#00ff41" opacity="0.7"/>
+            <circle cx="10" cy="10" r="2.5" fill="#00ff41"/>
+          </svg>
+        </span>
+        <span>Start</span>
+      </button>
+
+      <!-- Running Apps -->
+      <div id="taskbar-apps" role="list" aria-label="Running applications"></div>
+
+      <!-- System Tray -->
+      <div class="taskbar-tray">
+        <span class="tray-item" id="tray-battery" title="Battery" aria-label="Battery">🔋</span>
+        <span class="tray-item" id="tray-wifi" title="Network" aria-label="Network">📶</span>
+        <span class="tray-item" id="tray-volume" title="Volume" aria-label="Volume">🔊</span>
+        <div class="tray-clock">
+          <div id="tray-time" aria-live="polite"></div>
+          <div id="tray-date" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="start-menu" class="hidden" role="dialog" aria-label="Start Menu">
+      <div class="start-header">
+        <div class="start-user">
+          <span class="start-avatar">👤</span>
+          <div>
+            <div class="start-username">User</div>
+            <div class="start-platform" id="start-platform"></div>
+          </div>
+        </div>
+        <input type="search" id="start-search" class="start-search" placeholder="Search apps…" aria-label="Search applications" />
+      </div>
+
+      <div class="start-apps" id="start-apps">
+        <div class="start-section-title">Applications</div>
+        <div class="start-app-grid" id="start-app-grid">
+          <button class="start-app-item" data-app="filemanager">
+            <span>📁</span><span>Files</span>
+          </button>
+          <button class="start-app-item" data-app="texteditor">
+            <span>📝</span><span>Text Editor</span>
+          </button>
+          <button class="start-app-item" data-app="calculator">
+            <span>🔢</span><span>Calculator</span>
+          </button>
+          <button class="start-app-item" data-app="terminal">
+            <span>💻</span><span>Terminal</span>
+          </button>
+          <button class="start-app-item" data-app="webbrowser">
+            <span>🌐</span><span>Browser</span>
+          </button>
+          <button class="start-app-item" data-app="settings">
+            <span>⚙️</span><span>Settings</span>
+          </button>
+          <button class="start-app-item" data-app="imagegallery">
+            <span>🖼️</span><span>Gallery</span>
+          </button>
+          <button class="start-app-item" data-app="clock">
+            <span>🕐</span><span>Clock</span>
+          </button>
+          <button class="start-app-item" data-app="matrix">
+            <span>🟩</span><span>Matrix Rain</span>
+          </button>
+          <button class="start-app-item" data-app="paint">
+            <span>🎨</span><span>Paint</span>
+          </button>
+          <button class="start-app-item" data-app="snake">
+            <span>🐍</span><span>Snake</span>
+          </button>
+          <button class="start-app-item" data-app="musicplayer">
+            <span>🎵</span><span>Music</span>
+          </button>
+          <button class="start-app-item" data-app="calendar">
+            <span>📅</span><span>Calendar</span>
+          </button>
+          <button class="start-app-item" data-app="videoplayer">
+            <span>🎬</span><span>Videos</span>
+          </button>
+          <button class="start-app-item" data-app="sysmonitor">
+            <span>📊</span><span>Monitor</span>
+          </button>
+          <button class="start-app-item" data-app="appstore">
+            <span>🏪</span><span>App Store</span>
+          </button>
+          <button class="start-app-item" data-app="firefox">
+            <span>🦊</span><span>Firefox</span>
+          </button>
+          <button class="start-app-item" data-app="scriptmanager">
+            <span>📜</span><span>Scripts</span>
+          </button>
+          <button class="start-app-item" data-app="adminpanel">
+            <span>🛡️</span><span>Admin</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="start-footer">
+        <button class="start-footer-btn" id="btn-lock">🔒 Lock</button>
+        <button class="start-footer-btn" id="btn-restart">🔄 Restart</button>
+        <button class="start-footer-btn" id="btn-shutdown">⏻ Shut Down</button>
+      </div>
+    </div>
+
+    <!-- Notification Area -->
+    <div id="notification-area" aria-live="polite" aria-atomic="true"></div>
+
+  </div><!-- /desktop -->
+
+  <!-- Window Templates are created dynamically by JS -->
+
+  <script src="js/windowmanager.js"></script>
+  <script src="js/desktop.js"></script>
+  <script src="js/apps/filemanager.js"></script>
+  <script src="js/apps/texteditor.js"></script>
+  <script src="js/apps/calculator.js"></script>
+  <script src="js/apps/terminal.js"></script>
+  <script src="js/apps/webbrowser.js"></script>
+  <script src="js/apps/settings.js"></script>
+  <script src="js/apps/imagegallery.js"></script>
+  <script src="js/apps/clock.js"></script>
+  <script src="js/apps/matrix.js"></script>
+  <script src="js/apps/paint.js"></script>
+  <script src="js/apps/snake.js"></script>
+  <script src="js/apps/musicplayer.js"></script>
+  <script src="js/apps/stickynotes.js"></script>
+  <script src="js/apps/calendar.js"></script>
+  <script src="js/apps/sysmonitor.js"></script>
+  <script src="js/apps/videoplayer.js"></script>
+  <script src="js/apps/adminpanel.js"></script>
+  <script src="js/apps/appstore.js"></script>
+  <script src="js/apps/firefox.js"></script>
+  <script src="js/apps/scriptmanager.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/boot.js"></script>
+  <script>
+    /* Register service worker for proxy + offline caching */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(function(e) {
+          console.warn('[NightmareOS] SW registration failed:', e);
+          /* Show notification once the desktop is ready */
+          window.addEventListener('nightmareos-ready', function() {
+            if (window.showNotification) {
+              showNotification('NightmareOS', '⚠️ Proxy & offline features unavailable — service worker could not be registered.');
+            }
+          });
+        });
+    }
+  </script>
+</body>
+</html>
