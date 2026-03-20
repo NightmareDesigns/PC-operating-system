@@ -171,6 +171,24 @@
     frame.style.cssText = 'flex:1;border:none;width:100%;height:100%;';
     frameContainer.appendChild(frame);
 
+    // Create iframe programmatically so the window manager sanitizer
+    // does not strip it (the sanitizer removes iframe elements from HTML strings).
+    const frame = document.createElement('iframe');
+    frame.className = 'browser-frame hidden';
+    frame.id = 'br-frame';
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.title = 'Browser content';
+    frame.setAttribute('aria-label', 'Browser content frame');
+    frame.setAttribute('referrerpolicy', 'no-referrer');
+    const slot = el.querySelector('#br-frame-slot');
+    if (slot) {
+      slot.parentNode.replaceChild(frame, slot);
+    } else {
+      // Fallback: append into the content area so the browser is still usable
+      const content = el.querySelector('#br-content');
+      if (content) content.appendChild(frame);
+    }
+
     let currentUrl = '';
     const navHistory = [];
     let navIdx = -1;
