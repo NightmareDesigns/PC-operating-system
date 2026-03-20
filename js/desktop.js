@@ -304,29 +304,32 @@ function lockScreen() {
 }
 
 function restartOS() {
-  const boot = $('boot-screen');
-  const desktop = $('desktop');
-  if (boot && desktop) {
-    desktop.classList.add('hidden');
-    boot.classList.remove('hidden');
-    $('boot-bar').style.width = '0%';
-    $('boot-status').textContent = 'Restarting…';
-    setTimeout(() => startBoot(false), 200);
+  const desktop = document.getElementById('desktop');
+  if (desktop) desktop.classList.add('hidden');
+
+  /* Close all open windows */
+  const container = document.getElementById('window-container');
+  if (container) container.innerHTML = '';
+  const taskbarApps = document.getElementById('taskbar-apps');
+  if (taskbarApps) taskbarApps.innerHTML = '';
+
+  /* Run full boot from POST */
+  if (window.startBoot) {
+    startBoot(true);
   }
 }
 
 function shutdownOS() {
-  document.body.innerHTML = `
-    <div style="position:fixed;inset:0;background:#050709;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;gap:16px;color:white;font-family:system-ui;">
-      <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-        <circle cx="30" cy="30" r="28" stroke="#4f8ef7" stroke-width="2"/>
-        <line x1="30" y1="14" x2="30" y2="32" stroke="#4f8ef7" stroke-width="3" stroke-linecap="round"/>
-        <path d="M20 20 A14 14 0 1 0 40 20" stroke="#4f8ef7" stroke-width="3" stroke-linecap="round" fill="none"/>
-      </svg>
-      <p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">NightOS has shut down.</p>
-      <p style="font-size:0.82rem;color:#8892a4;">Close this tab or refresh to restart.</p>
-    </div>`;
+  if (window.runShutdownSequence) {
+    window.runShutdownSequence();
+  } else {
+    document.body.innerHTML = `
+      <div style="position:fixed;inset:0;background:#050709;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:16px;color:white;font-family:system-ui;">
+        <p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">NightOS has shut down.</p>
+        <p style="font-size:0.82rem;color:#8892a4;">Close this tab or refresh to restart.</p>
+      </div>`;
+  }
 }
 
 /* ---- Global keyboard shortcuts ---- */
@@ -378,6 +381,10 @@ function initDesktop() {
   if (window.StickyNotes) window.StickyNotes.renderSaved();
   showNotification('NightmareOS', `Welcome, ${NightOS.username}! ` +
     'Running on ' + (navigator.platform || 'your device') + '.');
+  if (window._recoveryMode) {
+    showNotification('Recovery Mode', 'System booted in recovery mode. All services running normally.');
+    window._recoveryMode = false;
+  }
 }
 
 // Exposed globally so boot.js can call it
