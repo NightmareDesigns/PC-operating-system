@@ -82,8 +82,8 @@
         <button class="browser-nav-btn browser-go-btn" id="br-go" title="Go" aria-label="Navigate">→</button>
         <button class="browser-nav-btn" id="br-newtab" title="Open in new tab" aria-label="New tab">↗</button>
       </div>
-      <div class="browser-bookmarks-bar" style="flex-wrap:wrap;gap:4px;padding:4px 8px;display:flex;align-items:center;">
-        <span class="browser-bookmarks-label" style="font-size:11px;color:#8892a4;margin-right:4px;white-space:nowrap;">★ Bookmarks:</span>
+      <div class="browser-bookmarks-bar">
+        <span class="browser-bookmarks-label">★ Bookmarks:</span>
         ${bookmarkBtns}
         <span id="br-user-bookmarks"></span>
         <button class="win-toolbar-btn browser-import-btn" id="br-import-bookmarks"
