@@ -23,6 +23,34 @@
   ];
 
   const BOOKMARKS_KEY = 'nightmareos_bookmarks';
+  const HISTORY_KEY = 'nightmareos_browser_history';
+  const MAX_HISTORY = 50;
+
+  /* ---- Persistent browser history helpers ---- */
+  function loadBrowsingHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]'); }
+    catch (_) { return []; }
+  }
+
+  function saveBrowsingHistory(list) {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY))); }
+    catch (_) { /* quota exceeded */ }
+  }
+
+  function addToHistory(url) {
+    if (!url || url === 'about:blank') return;
+    const list = loadBrowsingHistory();
+    // Remove duplicate if exists
+    const filtered = list.filter(h => h.url !== url);
+    let title;
+    try { title = new URL(url).hostname; } catch (_) { title = url; }
+    filtered.unshift({ url, title, time: Date.now() });
+    saveBrowsingHistory(filtered);
+  }
+
+  function clearBrowsingHistory() {
+    try { localStorage.removeItem(HISTORY_KEY); } catch (_) {}
+  }
 
   /* ---- User bookmark helpers ---- */
   function loadUserBookmarks() {
@@ -120,6 +148,13 @@
                 <span>📦</span><span>NPM</span>
               </div>
             </div>
+            <div class="browser-history-section" id="br-history-section">
+              <div class="browser-history-header">
+                <span>🕐 Recent History</span>
+                <button class="browser-clear-history-btn" id="br-clear-history">Clear</button>
+              </div>
+              <div class="browser-history-list" id="br-history-list"></div>
+            </div>
             <p class="browser-home-note">
               ⚠️ Some websites block iframe embedding.<br>
               Use <strong>↗</strong> to open them in a real browser tab.
@@ -165,30 +200,12 @@
     const frame = document.createElement('iframe');
     frame.className = 'browser-frame';
     frame.id = 'br-frame';
-    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-presentation');
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
     frame.setAttribute('title', 'Browser content');
     frame.setAttribute('aria-label', 'Browser content frame');
     frame.setAttribute('referrerpolicy', 'no-referrer');
     frame.style.cssText = 'flex:1;border:none;width:100%;height:100%;';
     frameContainer.appendChild(frame);
-
-    // Create iframe programmatically so the window manager sanitizer
-    // does not strip it (the sanitizer removes iframe elements from HTML strings).
-    const frame = document.createElement('iframe');
-    frame.className = 'browser-frame hidden';
-    frame.id = 'br-frame';
-    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
-    frame.title = 'Browser content';
-    frame.setAttribute('aria-label', 'Browser content frame');
-    frame.setAttribute('referrerpolicy', 'no-referrer');
-    const slot = el.querySelector('#br-frame-slot');
-    if (slot) {
-      slot.parentNode.replaceChild(frame, slot);
-    } else {
-      // Fallback: append into the content area so the browser is still usable
-      const content = el.querySelector('#br-content');
-      if (content) content.appendChild(frame);
-    }
 
     let currentUrl = '';
     const navHistory = [];
@@ -213,7 +230,7 @@
     /* ---- Show/hide views ---- */
     function showHome() {
       homeEl.classList.remove('hidden');
-      if (frame) frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.add('hidden');
       loadingEl.classList.add('hidden');
       if (status) status.textContent = 'Home';
@@ -223,13 +240,13 @@
     function showFrame() {
       homeEl.classList.add('hidden');
       blocked.classList.add('hidden');
-      if (frame) frame.classList.remove('hidden');
+      frameContainer.classList.remove('hidden');
       loadingEl.classList.remove('hidden');
     }
 
     function showBlocked(url) {
       homeEl.classList.add('hidden');
-      if (frame) frame.classList.add('hidden');
+      frameContainer.classList.add('hidden');
       blocked.classList.remove('hidden');
       loadingEl.classList.add('hidden');
       if (openTab) openTab.dataset.url = url;
@@ -254,6 +271,9 @@
       // Update SSL indicator
       if (sslEl) sslEl.textContent = url.startsWith('https://') ? '🔒' : '🔓';
       if (status) status.textContent = `Loading…`;
+
+      // Save to persistent browsing history
+      addToHistory(url);
 
       showFrame();
 
@@ -421,6 +441,57 @@
     el.querySelectorAll('.browser-quicklink').forEach(ql => {
       ql.addEventListener('click', () => navigate(ql.dataset.url));
     });
+
+    // Render browsing history on homepage
+    function renderHistory() {
+      const listEl = el.querySelector('#br-history-list');
+      const sectionEl = el.querySelector('#br-history-section');
+      if (!listEl || !sectionEl) return;
+      const history = loadBrowsingHistory().slice(0, 8);
+      if (history.length === 0) {
+        sectionEl.classList.add('hidden');
+        return;
+      }
+      sectionEl.classList.remove('hidden');
+      listEl.innerHTML = history.map(h =>
+        `<div class="browser-history-item" data-url="${escHtml(h.url)}" title="${escHtml(h.url)}">
+          <span class="browser-history-title">${escHtml(h.title)}</span>
+          <span class="browser-history-time">${formatHistoryTime(h.time)}</span>
+        </div>`
+      ).join('');
+      listEl.querySelectorAll('.browser-history-item').forEach(item => {
+        item.addEventListener('click', () => navigate(item.dataset.url));
+      });
+    }
+
+    function formatHistoryTime(ts) {
+      if (!ts || ts > Date.now()) return '';
+      const d = new Date(ts);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+
+    // Clear history button
+    const clearHistoryBtn = el.querySelector('#br-clear-history');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        clearBrowsingHistory();
+        renderHistory();
+        if (typeof showNotification === 'function')
+          showNotification('Browser', 'Browsing history cleared.');
+      });
+    }
+
+    // Render history on homepage show
+    const origShowHome = showHome;
+    showHome = function () {
+      origShowHome();
+      renderHistory();
+    };
 
     // Start at homepage
     showHome();

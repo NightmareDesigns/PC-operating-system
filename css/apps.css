@@ -2286,3 +2286,176 @@
   color: var(--blood-red);
   text-shadow: var(--blood-shadow);
 }
+
+/* ---- Browser History Section ---- */
+.browser-history-section { margin-top: 20px; width: 100%; max-width: 560px; }
+.browser-history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; padding: 0 4px;
+}
+.browser-clear-history-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 0.72rem; padding: 2px 8px; cursor: pointer;
+}
+.browser-clear-history-btn:hover { color: #ef4444; border-color: #ef4444; }
+.browser-history-list { display: flex; flex-direction: column; gap: 2px; }
+.browser-history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+  color: var(--text-primary); background: rgba(255,255,255,0.03); transition: background 0.15s;
+}
+.browser-history-item:hover { background: rgba(79,142,247,0.15); }
+.browser-history-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-history-time { color: var(--text-secondary); font-size: 0.72rem; margin-left: 12px; flex-shrink: 0; }
+
+/* ---- Todo List App ---- */
+.todo-app { display: flex; flex-direction: column; height: 100%; padding: 12px; gap: 10px; }
+.todo-input-row { display: flex; gap: 6px; }
+.todo-input {
+  flex: 1; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; color: var(--text-primary); font-size: 0.85rem; outline: none;
+}
+.todo-input:focus { border-color: var(--accent); }
+.todo-priority {
+  background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-primary); font-size: 0.78rem; padding: 4px 6px; cursor: pointer;
+}
+.todo-add-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  width: 36px; font-size: 1.1rem; cursor: pointer; transition: background 0.15s;
+}
+.todo-add-btn:hover { background: var(--accent-dark); }
+.todo-filters { display: flex; gap: 4px; }
+.todo-filter {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 0.75rem; padding: 4px 10px; cursor: pointer;
+}
+.todo-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.todo-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.todo-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: rgba(255,255,255,0.03); border-radius: 6px; transition: opacity 0.15s;
+}
+.todo-item.todo-done { opacity: 0.5; }
+.todo-item.todo-done .todo-text { text-decoration: line-through; }
+.todo-check {
+  background: none; border: none; color: var(--text-primary); font-size: 1rem; cursor: pointer; padding: 0;
+}
+.todo-text { flex: 1; font-size: 0.85rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-badge {
+  font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; text-transform: uppercase;
+}
+.todo-badge-low { background: rgba(48,209,88,0.2); color: #30d158; }
+.todo-badge-medium { background: rgba(255,149,0,0.2); color: #ff9500; }
+.todo-badge-high { background: rgba(255,55,95,0.2); color: #ff375f; }
+.todo-delete {
+  background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; padding: 2px 4px;
+}
+.todo-delete:hover { color: #ef4444; }
+.todo-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.75rem; color: var(--text-secondary); padding-top: 8px; border-top: 1px solid var(--border);
+}
+.todo-clear-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 0.72rem; padding: 3px 8px; cursor: pointer;
+}
+.todo-clear-btn:hover { color: #ef4444; border-color: #ef4444; }
+
+/* ---- Stopwatch & Timer ---- */
+.stopwatch-app { display: flex; flex-direction: column; height: 100%; padding: 12px; }
+.stopwatch-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.stopwatch-tab {
+  flex: 1; padding: 8px; text-align: center; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary);
+  font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+}
+.stopwatch-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.stopwatch-panel { display: flex; flex-direction: column; align-items: center; gap: 16px; flex: 1; }
+.stopwatch-display {
+  font-size: 3rem; font-family: 'Courier New', monospace; font-weight: 700;
+  color: var(--text-primary); letter-spacing: 2px; text-align: center;
+  padding: 20px 0;
+}
+.stopwatch-controls { display: flex; gap: 8px; }
+.stopwatch-btn {
+  padding: 8px 18px; border: 1px solid var(--border); border-radius: 6px;
+  background: rgba(255,255,255,0.05); color: var(--text-primary); font-size: 0.82rem;
+  cursor: pointer; transition: all 0.15s;
+}
+.stopwatch-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
+.stopwatch-btn:disabled { opacity: 0.4; cursor: default; }
+.stopwatch-btn.sw-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+.stopwatch-btn.sw-start:hover { background: var(--accent-dark); }
+.stopwatch-laps {
+  width: 100%; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+  margin-top: 8px;
+}
+.stopwatch-lap-item {
+  display: flex; justify-content: space-between; padding: 4px 10px;
+  font-size: 0.78rem; color: var(--text-secondary); background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.timer-inputs { display: flex; gap: 12px; align-items: center; }
+.timer-inputs label { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 0.8rem; }
+.timer-input {
+  width: 56px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 8px; color: var(--text-primary); font-size: 1rem; text-align: center;
+}
+.timer-status { font-size: 0.85rem; color: #ff9500; font-weight: 600; min-height: 1.2em; }
+.timer-done { animation: timer-flash 0.5s ease 3; }
+@keyframes timer-flash { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ---- Color Picker ---- */
+.colorpicker-app { display: flex; flex-direction: column; height: 100%; padding: 14px; gap: 12px; }
+.colorpicker-preview {
+  width: 100%; height: 80px; border-radius: 8px;
+  border: 1px solid var(--border); transition: background 0.15s;
+}
+.colorpicker-inputs { display: flex; gap: 8px; }
+.colorpicker-inputs label {
+  display: flex; flex-direction: column; gap: 2px; font-size: 0.72rem;
+  color: var(--text-secondary); text-transform: uppercase;
+}
+.colorpicker-input {
+  background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 8px; color: var(--text-primary); font-size: 0.85rem;
+}
+.colorpicker-input:focus { border-color: var(--accent); outline: none; }
+.colorpicker-inputs label:first-child { flex: 2; }
+.colorpicker-rgb { width: 56px; text-align: center; }
+.colorpicker-picker-row { display: flex; gap: 8px; align-items: center; }
+.colorpicker-native { width: 40px; height: 36px; border: none; border-radius: 6px; cursor: pointer; }
+.colorpicker-btn {
+  flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: rgba(255,255,255,0.05); color: var(--text-primary); font-size: 0.8rem;
+  cursor: pointer; transition: background 0.15s;
+}
+.colorpicker-btn:hover { background: rgba(255,255,255,0.12); }
+.colorpicker-saved-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.colorpicker-saved-header {
+  font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 6px;
+}
+.colorpicker-saved {
+  display: flex; flex-wrap: wrap; gap: 6px; overflow-y: auto;
+}
+.colorpicker-swatch {
+  width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+  border: 2px solid transparent; transition: border-color 0.15s;
+}
+.colorpicker-swatch:hover { border-color: var(--accent); }
+
+/* ---- Settings: Shortcuts Table ---- */
+.shortcuts-table {
+  width: 100%; border-collapse: collapse; font-size: 0.82rem;
+}
+.shortcuts-table th {
+  text-align: left; padding: 8px 10px; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border);
+}
+.shortcuts-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.shortcuts-table kbd {
+  display: inline-block; padding: 2px 6px; background: var(--bg-light);
+  border: 1px solid var(--border); border-radius: 3px; font-family: inherit;
+  font-size: 0.76rem; color: var(--text-primary);
+}

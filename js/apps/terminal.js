@@ -72,11 +72,27 @@
       </div>`;
   }
 
+  const TERM_HISTORY_KEY = 'nightmareos_term_history';
+
+  function loadTermHistory() {
+    try { return JSON.parse(localStorage.getItem(TERM_HISTORY_KEY) ?? '[]'); }
+    catch (_) { return []; }
+  }
+
+  function saveTermHistory(list) {
+    try { localStorage.setItem(TERM_HISTORY_KEY, JSON.stringify(list.slice(0, 100))); }
+    catch (_) { /* quota exceeded */ }
+  }
+
   function initTerm(el, id) {
     const output = el.querySelector('#term-output');
     const input  = el.querySelector('#term-input');
     const prompt = el.querySelector('#term-prompt');
     let localCwd = HOME;
+
+    // Instance-scoped command history — loaded from persistent storage
+    const HISTORY = loadTermHistory();
+    let histIdx = -1;
 
     function updatePrompt() {
       const short = localCwd.replace(HOME, '~');
@@ -123,6 +139,7 @@
           HISTORY.unshift(cmd);
           if (HISTORY.length > 50) HISTORY.pop();
           histIdx = -1;
+          saveTermHistory(HISTORY);
           runCommand(cmd, localCwd, (newCwd) => { localCwd = newCwd; updatePrompt(); });
         }
         input.value = '';
