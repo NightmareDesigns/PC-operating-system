@@ -172,6 +172,34 @@
         <span class="icon-img">🎯</span>
         <span class="icon-label">Color Picker</span>
       </div>
+      <div class="desktop-icon" data-app="markdown" tabindex="0" role="button" aria-label="Markdown Editor">
+        <span class="icon-img">📑</span>
+        <span class="icon-label">Markdown</span>
+      </div>
+      <div class="desktop-icon" data-app="pomodoro" tabindex="0" role="button" aria-label="Pomodoro Timer">
+        <span class="icon-img">🍅</span>
+        <span class="icon-label">Pomodoro</span>
+      </div>
+      <div class="desktop-icon" data-app="weather" tabindex="0" role="button" aria-label="Weather">
+        <span class="icon-img">🌤️</span>
+        <span class="icon-label">Weather</span>
+      </div>
+      <div class="desktop-icon" data-app="passwordgen" tabindex="0" role="button" aria-label="Password Generator">
+        <span class="icon-img">🔐</span>
+        <span class="icon-label">Passwords</span>
+      </div>
+      <div class="desktop-icon" data-app="unitconverter" tabindex="0" role="button" aria-label="Unit Converter">
+        <span class="icon-img">📏</span>
+        <span class="icon-label">Converter</span>
+      </div>
+      <div class="desktop-icon" data-app="habittracker" tabindex="0" role="button" aria-label="Habit Tracker">
+        <span class="icon-img">📈</span>
+        <span class="icon-label">Habits</span>
+      </div>
+      <div class="desktop-icon" data-app="systeminfo" tabindex="0" role="button" aria-label="System Info">
+        <span class="icon-img">ℹ️</span>
+        <span class="icon-label">About</span>
+      </div>
     </div>
 
     <!-- Context Menu -->
@@ -215,6 +243,9 @@
         <span class="tray-item" id="tray-battery" title="Battery" aria-label="Battery">🔋</span>
         <span class="tray-item" id="tray-wifi" title="Network" aria-label="Network">📶</span>
         <span class="tray-item" id="tray-volume" title="Volume" aria-label="Volume">🔊</span>
+        <button class="tray-item tray-notif-btn" id="tray-notif-btn" title="Notifications" aria-label="Notification Center" onclick="toggleNotifCenter()">
+          🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span>
+        </button>
         <div class="tray-clock">
           <div id="tray-time" aria-live="polite"></div>
           <div id="tray-date" aria-live="polite"></div>
@@ -307,6 +338,27 @@
           <button class="start-app-item" data-app="colorpicker">
             <span>🎯</span><span>Color Picker</span>
           </button>
+          <button class="start-app-item" data-app="markdown">
+            <span>📑</span><span>Markdown Editor</span>
+          </button>
+          <button class="start-app-item" data-app="pomodoro">
+            <span>🍅</span><span>Pomodoro Timer</span>
+          </button>
+          <button class="start-app-item" data-app="weather">
+            <span>🌤️</span><span>Weather</span>
+          </button>
+          <button class="start-app-item" data-app="passwordgen">
+            <span>🔐</span><span>Password Generator</span>
+          </button>
+          <button class="start-app-item" data-app="unitconverter">
+            <span>📏</span><span>Unit Converter</span>
+          </button>
+          <button class="start-app-item" data-app="habittracker">
+            <span>📈</span><span>Habit Tracker</span>
+          </button>
+          <button class="start-app-item" data-app="systeminfo">
+            <span>ℹ️</span><span>System Info</span>
+          </button>
         </div>
       </div>
 
@@ -315,6 +367,15 @@
         <button class="start-footer-btn" id="btn-restart">🔄 Restart</button>
         <button class="start-footer-btn" id="btn-shutdown">⏻ Shut Down</button>
       </div>
+    </div>
+
+    <!-- Notification Center Panel -->
+    <div id="notification-center" class="hidden" role="dialog" aria-label="Notification Center">
+      <div class="notif-center-header">
+        <span>🔔 Notifications</span>
+        <button class="notif-clear-btn" onclick="clearNotifCenter()" title="Clear all">Clear All</button>
+      </div>
+      <div class="notif-list" id="notif-list"></div>
     </div>
 
     <!-- Notification Area -->
@@ -354,6 +415,13 @@
   <script src="js/apps/todolist.js"></script>
   <script src="js/apps/stopwatch.js"></script>
   <script src="js/apps/colorpicker.js"></script>
+  <script src="js/apps/markdown.js"></script>
+  <script src="js/apps/pomodoro.js"></script>
+  <script src="js/apps/weather.js"></script>
+  <script src="js/apps/passwordgen.js"></script>
+  <script src="js/apps/unitconverter.js"></script>
+  <script src="js/apps/habittracker.js"></script>
+  <script src="js/apps/systeminfo.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/boot.js"></script>
   <script>
