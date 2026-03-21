@@ -18,18 +18,45 @@
 
 'use strict';
 
-const CACHE_NAME  = 'nightmareos-v2';
+const CACHE_NAME  = 'nightmareos-v3';
 const PROXY_PATH  = '/nmproxy';
 
 const APP_SHELL = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
+  '/icons/icon-maskable-512.svg',
   '/css/desktop.css',
   '/css/apps.css',
   '/js/desktop.js',
   '/js/windowmanager.js',
   '/js/boot.js',
   '/js/sync.js',
+  '/js/apps/filemanager.js',
+  '/js/apps/texteditor.js',
+  '/js/apps/calculator.js',
+  '/js/apps/terminal.js',
+  '/js/apps/webbrowser.js',
+  '/js/apps/settings.js',
+  '/js/apps/imagegallery.js',
+  '/js/apps/clock.js',
+  '/js/apps/matrix.js',
+  '/js/apps/paint.js',
+  '/js/apps/snake.js',
+  '/js/apps/musicplayer.js',
+  '/js/apps/stickynotes.js',
+  '/js/apps/calendar.js',
+  '/js/apps/sysmonitor.js',
+  '/js/apps/videoplayer.js',
+  '/js/apps/adminpanel.js',
+  '/js/apps/appstore.js',
+  '/js/apps/firefox.js',
+  '/js/apps/scriptmanager.js',
+  '/js/apps/todolist.js',
+  '/js/apps/stopwatch.js',
+  '/js/apps/colorpicker.js',
 ];
 
 /* ── Install: cache app shell ──────────────────────────────────────── */

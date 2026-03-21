@@ -2459,3 +2459,182 @@
   border: 1px solid var(--border); border-radius: 3px; font-family: inherit;
   font-size: 0.76rem; color: var(--text-primary);
 }
+
+/* ---- Firefox Browser ---- */
+.ff-browser {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+}
+.ff-tab-bar {
+  display: flex; align-items: center; background: #1c1b22;
+  border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 6px 0;
+  min-height: 36px; gap: 2px; overflow-x: auto;
+}
+.ff-tab {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.04); border-radius: 8px 8px 0 0;
+  padding: 5px 10px; font-size: 0.78rem; color: var(--text-secondary);
+  cursor: pointer; max-width: 180px; min-width: 80px; position: relative;
+  transition: background 0.15s;
+}
+.ff-tab:hover { background: rgba(255,255,255,0.08); }
+.ff-tab-active {
+  background: var(--bg-mid); color: var(--text-primary);
+  border-bottom: 2px solid #ff7139;
+}
+.ff-tab-title {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ff-tab-close {
+  font-size: 0.9rem; cursor: pointer; color: var(--text-secondary);
+  opacity: 0.5; padding: 0 2px; border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.ff-tab-close:hover { opacity: 1; background: rgba(255,80,80,0.3); color: #fff; }
+.ff-new-tab-btn {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 1.1rem; cursor: pointer; padding: 4px 10px; border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.ff-new-tab-btn:hover { background: rgba(255,255,255,0.1); color: #ff7139; }
+.ff-toolbar {
+  display: flex; align-items: center; gap: 4px;
+  background: #2b2a33; padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ff-nav-btn {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 1.1rem; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.ff-nav-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.ff-url-bar {
+  flex: 1; display: flex; align-items: center;
+  background: #42414d; border-radius: 8px; padding: 0 8px;
+  border: 2px solid transparent; transition: border-color 0.2s;
+}
+.ff-url-bar:focus-within { border-color: #ff7139; }
+.ff-url-icon { font-size: 0.8rem; margin-right: 4px; }
+.ff-url-input {
+  flex: 1; background: none; border: none; color: var(--text-primary);
+  font-size: 0.85rem; padding: 6px 4px; outline: none;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.ff-url-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+.ff-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.ff-frame {
+  flex: 1; border: none; width: 100%; height: 100%; background: #fff;
+}
+.ff-statusbar {
+  display: flex; align-items: center; padding: 3px 10px;
+  font-size: 0.72rem; color: var(--text-secondary);
+  background: #1c1b22; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.ff-loading {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  background: rgba(28,27,34,0.85); color: var(--text-secondary);
+  font-size: 0.9rem; z-index: 5;
+}
+.ff-spinner {
+  width: 32px; height: 32px; border: 3px solid rgba(255,113,57,0.2);
+  border-top-color: #ff7139; border-radius: 50%;
+  animation: ff-spin 0.8s linear infinite;
+}
+@keyframes ff-spin { to { transform: rotate(360deg); } }
+.ff-blocked {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 32px; text-align: center; color: var(--text-secondary);
+}
+.ff-blocked .blocked-icon { font-size: 3rem; }
+.ff-open-tab-btn {
+  background: #ff7139; color: #fff; border: none; padding: 8px 18px;
+  border-radius: 6px; font-size: 0.85rem; cursor: pointer;
+  transition: background 0.15s;
+}
+.ff-open-tab-btn:hover { background: #e5622e; }
+.ff-try-btn {
+  background: var(--bg-light); color: var(--text-primary); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+  transition: background 0.15s;
+}
+.ff-try-btn:hover { background: var(--bg-mid); }
+
+/* Firefox Home */
+.ff-home {
+  flex: 1; overflow-y: auto; display: flex; justify-content: center;
+  padding: 24px 16px; background: #2b2a33;
+}
+.ff-home-inner { max-width: 640px; width: 100%; text-align: center; }
+.ff-home-logo { font-size: 4rem; margin-bottom: 8px; }
+.ff-home-title { font-size: 1.5rem; font-weight: 600; color: #ff7139; margin-bottom: 4px; }
+.ff-home-subtitle { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 20px; }
+.ff-home-search { display: flex; gap: 6px; margin-bottom: 24px; }
+.ff-home-input {
+  flex: 1; background: #42414d; color: var(--text-primary);
+  border: 2px solid transparent; border-radius: 8px;
+  padding: 10px 14px; font-size: 0.9rem; outline: none;
+  transition: border-color 0.2s;
+}
+.ff-home-input:focus { border-color: #ff7139; }
+.ff-home-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+.ff-home-btn {
+  background: #ff7139; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 18px; font-size: 0.85rem; cursor: pointer;
+  transition: background 0.15s;
+}
+.ff-home-btn:hover { background: #e5622e; }
+.ff-quicklinks {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin-bottom: 24px;
+}
+.ff-quicklink {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; background: rgba(255,255,255,0.04); border-radius: 10px;
+  cursor: pointer; transition: background 0.15s;
+  font-size: 0.78rem; color: var(--text-secondary);
+}
+.ff-quicklink:hover { background: rgba(255,113,57,0.12); color: var(--text-primary); }
+.ff-quicklink span:first-child { font-size: 1.5rem; }
+
+/* Capabilities grid */
+.ff-capabilities { margin-bottom: 24px; text-align: left; }
+.ff-cap-title {
+  font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 8px;
+  font-weight: 600;
+}
+.ff-cap-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+}
+.ff-cap-item {
+  font-size: 0.72rem; padding: 4px 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.03);
+}
+.ff-cap-yes { color: #30e060; }
+.ff-cap-no { color: #ff6b6b; opacity: 0.6; }
+
+/* Firefox History */
+.ff-history-section { text-align: left; margin-top: 16px; }
+.ff-history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; font-size: 0.82rem; color: var(--text-secondary);
+}
+.ff-clear-btn {
+  background: none; border: 1px solid var(--border); color: var(--text-secondary);
+  padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer;
+  transition: background 0.15s;
+}
+.ff-clear-btn:hover { background: rgba(255,255,255,0.06); }
+.ff-history-list { display: flex; flex-direction: column; gap: 2px; }
+.ff-history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px;
+  cursor: pointer; transition: background 0.15s; font-size: 0.78rem;
+}
+.ff-history-item:hover { background: rgba(255,113,57,0.12); }
+.ff-history-title { color: var(--text-primary); }
+.ff-history-time { color: var(--text-secondary); font-size: 0.7rem; }
+
+@media (max-width: 600px) {
+  .ff-quicklinks { grid-template-columns: repeat(2, 1fr); }
+  .ff-cap-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+}

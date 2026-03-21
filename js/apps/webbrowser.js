@@ -200,7 +200,8 @@
     const frame = document.createElement('iframe');
     frame.className = 'browser-frame';
     frame.id = 'br-frame';
-    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-presentation');
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-modals allow-downloads allow-top-navigation-by-user-activation');
+    frame.setAttribute('allow', 'camera; microphone; geolocation; display-capture; fullscreen; payment; midi; clipboard-read; clipboard-write; gyroscope; accelerometer; magnetometer; usb; serial; bluetooth; xr-spatial-tracking; autoplay; encrypted-media; picture-in-picture; web-share');
     frame.setAttribute('title', 'Browser content');
     frame.setAttribute('aria-label', 'Browser content frame');
     frame.setAttribute('referrerpolicy', 'no-referrer');
