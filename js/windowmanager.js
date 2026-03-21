@@ -303,9 +303,57 @@ const WindowManager = (() => {
     if (activeEndHandler) activeEndHandler();
   });
 
+  /* ---- Snap Preview Overlay ---- */
+  const snapOverlay = document.createElement('div');
+  snapOverlay.className = 'snap-overlay hidden';
+  document.body.appendChild(snapOverlay);
+
+  const SNAP_EDGE = 12; // pixels from screen edge to trigger snap
+
+  function showSnapPreview(zone) {
+    const taskbarH = 48;
+    const h = window.innerHeight - taskbarH;
+    snapOverlay.classList.remove('hidden');
+    if (zone === 'left') {
+      snapOverlay.style.cssText = `left:0;top:0;width:50%;height:${h}px`;
+    } else if (zone === 'right') {
+      snapOverlay.style.cssText = `left:50%;top:0;width:50%;height:${h}px`;
+    } else if (zone === 'top') {
+      snapOverlay.style.cssText = `left:0;top:0;width:100%;height:${h}px`;
+    }
+  }
+
+  function hideSnapPreview() {
+    snapOverlay.classList.add('hidden');
+  }
+
+  function snapWindow(win, zone) {
+    const taskbarH = 48;
+    const h = window.innerHeight - taskbarH;
+    // Save restore geometry before snapping
+    if (!win.dataset.restoreLeft) {
+      win.dataset.restoreLeft = win.style.left;
+      win.dataset.restoreTop = win.style.top;
+      win.dataset.restoreWidth = win.style.width;
+      win.dataset.restoreHeight = win.style.height;
+    }
+    if (zone === 'left') {
+      win.style.left = '0px'; win.style.top = '0px';
+      win.style.width = `${Math.floor(window.innerWidth / 2)}px`;
+      win.style.height = `${h}px`;
+    } else if (zone === 'right') {
+      win.style.left = `${Math.floor(window.innerWidth / 2)}px`; win.style.top = '0px';
+      win.style.width = `${Math.floor(window.innerWidth / 2)}px`;
+      win.style.height = `${h}px`;
+    } else if (zone === 'top') {
+      toggleMaximize(win);
+    }
+  }
+
   /* ---- Drag ---- */
   function initDrag(win, handle) {
     let startX, startY, startLeft, startTop;
+    let snapZone = null;
 
     function onMove(cx, cy) {
       const dx = cx - startX;
@@ -316,11 +364,22 @@ const WindowManager = (() => {
       const maxTop = window.innerHeight - taskbarH - 30;
       win.style.left = `${newLeft}px`;
       win.style.top = `${Math.min(newTop, maxTop)}px`;
+
+      // Snap zone detection
+      if (cx <= SNAP_EDGE) { snapZone = 'left'; showSnapPreview('left'); }
+      else if (cx >= window.innerWidth - SNAP_EDGE) { snapZone = 'right'; showSnapPreview('right'); }
+      else if (cy <= SNAP_EDGE) { snapZone = 'top'; showSnapPreview('top'); }
+      else { snapZone = null; hideSnapPreview(); }
     }
 
     function onEnd() {
       handle.style.cursor = 'grab';
       document.body.style.userSelect = '';
+      hideSnapPreview();
+      if (snapZone) {
+        snapWindow(win, snapZone);
+        snapZone = null;
+      }
       activeMoveHandler = null;
       activeEndHandler  = null;
     }
@@ -333,6 +392,7 @@ const WindowManager = (() => {
       startTop  = parseInt(win.style.top, 10)  || 0;
       handle.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
+      snapZone = null;
       activeMoveHandler = onMove;
       activeEndHandler  = onEnd;
     }

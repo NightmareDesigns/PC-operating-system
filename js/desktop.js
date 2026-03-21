@@ -57,6 +57,9 @@ const WALLPAPERS = [
 /* ---- Utility ---- */
 function $(id) { return document.getElementById(id); }
 
+/* ---- Notification Center State ---- */
+const _notificationHistory = [];
+
 function showNotification(title, body, duration = 3500) {
   const area = $('notification-area');
   const el = document.createElement('div');
@@ -70,6 +73,56 @@ function showNotification(title, body, duration = 3500) {
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     setTimeout(() => el.remove(), 320);
   }, duration);
+
+  // Log to notification center
+  _notificationHistory.unshift({
+    title: title,
+    body: body,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  });
+  if (_notificationHistory.length > 50) _notificationHistory.pop();
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const badge = $('notif-badge');
+  if (badge) {
+    const count = _notificationHistory.length;
+    badge.textContent = count > 9 ? '9+' : String(count);
+    badge.style.display = count > 0 ? '' : 'none';
+  }
+}
+
+function toggleNotifCenter() {
+  const panel = $('notification-center');
+  if (!panel) return;
+  const isOpen = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', isOpen);
+  if (!isOpen) renderNotifCenter();
+}
+
+function renderNotifCenter() {
+  const list = $('notif-list');
+  if (!list) return;
+  if (_notificationHistory.length === 0) {
+    list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+    return;
+  }
+  list.innerHTML = _notificationHistory.map(n =>
+    `<div class="notif-item">
+       <div class="notif-item-header">
+         <span class="notif-item-title">${escHtml(n.title)}</span>
+         <span class="notif-item-time">${escHtml(n.time)}</span>
+       </div>
+       <div class="notif-item-body">${escHtml(n.body)}</div>
+     </div>`
+  ).join('');
+}
+
+function clearNotifCenter() {
+  _notificationHistory.length = 0;
+  updateNotifBadge();
+  renderNotifCenter();
 }
 
 function escHtml(str) {
@@ -350,6 +403,41 @@ function initGlobalShortcuts() {
       e.preventDefault();
       NightOS.launchApp('scriptmanager');
     }
+    // Ctrl/Cmd + Alt + E → File Manager
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'e') {
+      e.preventDefault();
+      NightOS.launchApp('filemanager');
+    }
+    // Ctrl/Cmd + Alt + C → Calculator
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'c') {
+      e.preventDefault();
+      NightOS.launchApp('calculator');
+    }
+    // Ctrl/Cmd + Alt + W → Weather
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'w') {
+      e.preventDefault();
+      NightOS.launchApp('weather');
+    }
+    // Ctrl/Cmd + Alt + M → Markdown Editor
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'm') {
+      e.preventDefault();
+      NightOS.launchApp('markdown');
+    }
+    // Ctrl/Cmd + Alt + I → System Info
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'i') {
+      e.preventDefault();
+      NightOS.launchApp('systeminfo');
+    }
+    // Ctrl/Cmd + Alt + N → Notification Center toggle
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'n') {
+      e.preventDefault();
+      toggleNotifCenter();
+    }
+    // Ctrl/Cmd + Alt + L → Lock Screen
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'l') {
+      e.preventDefault();
+      lockScreen();
+    }
     // Super / Win key (Meta alone) → Start menu
     // Note: browsers intercept Meta alone, so we skip
   });
@@ -398,3 +486,5 @@ window.lockScreen = lockScreen;
 window.restartOS = restartOS;
 window.shutdownOS = shutdownOS;
 window.saveSettings = saveSettings;
+window.toggleNotifCenter = toggleNotifCenter;
+window.clearNotifCenter = clearNotifCenter;
