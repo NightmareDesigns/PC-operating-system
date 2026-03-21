@@ -80,13 +80,20 @@
     html = html.replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>');
 
     // Unordered list items
-    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li class="ul-item">$1</li>');
 
     // Ordered list items
-    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ol-item">$1</li>');
 
-    // Wrap consecutive <li> in <ul>
-    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+    // Wrap consecutive unordered <li> in <ul>
+    html = html.replace(/((?:<li class="ul-item">.*<\/li>\n?)+)/g, function (_m, items) {
+      return '<ul>' + items.replace(/ class="ul-item"/g, '') + '</ul>';
+    });
+
+    // Wrap consecutive ordered <li> in <ol>
+    html = html.replace(/((?:<li class="ol-item">.*<\/li>\n?)+)/g, function (_m, items) {
+      return '<ol>' + items.replace(/ class="ol-item"/g, '') + '</ol>';
+    });
 
     // Links  [text](url)
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');

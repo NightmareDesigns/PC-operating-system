@@ -59,6 +59,7 @@ function $(id) { return document.getElementById(id); }
 
 /* ---- Notification Center State ---- */
 const _notificationHistory = [];
+const MAX_NOTIFICATION_HISTORY = 50;
 
 function showNotification(title, body, duration = 3500) {
   const area = $('notification-area');
@@ -80,7 +81,7 @@ function showNotification(title, body, duration = 3500) {
     body: body,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   });
-  if (_notificationHistory.length > 50) _notificationHistory.pop();
+  if (_notificationHistory.length > MAX_NOTIFICATION_HISTORY) _notificationHistory.pop();
   updateNotifBadge();
 }
 

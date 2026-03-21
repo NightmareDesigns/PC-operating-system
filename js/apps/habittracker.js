@@ -7,6 +7,7 @@
 
 (function () {
   var STORE_KEY = 'nightmareos_habits';
+  var DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   function loadHabits() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
@@ -91,7 +92,7 @@
       var today = todayStr();
       var last7 = getLast7Days();
       var dayLabels = last7.map(function (d) {
-        return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(d + 'T12:00:00').getDay()];
+        return DAY_NAMES[new Date(d + 'T12:00:00').getDay()];
       });
 
       listEl.innerHTML = habits.length === 0

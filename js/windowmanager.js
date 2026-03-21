@@ -308,7 +308,7 @@ const WindowManager = (() => {
   snapOverlay.className = 'snap-overlay hidden';
   document.body.appendChild(snapOverlay);
 
-  const SNAP_EDGE = 12; // pixels from screen edge to trigger snap
+  var SNAP_EDGE_PX = 12; // pixels from screen edge to trigger snap preview
 
   function showSnapPreview(zone) {
     const taskbarH = 48;
@@ -365,10 +365,10 @@ const WindowManager = (() => {
       win.style.left = `${newLeft}px`;
       win.style.top = `${Math.min(newTop, maxTop)}px`;
 
-      // Snap zone detection
-      if (cx <= SNAP_EDGE) { snapZone = 'left'; showSnapPreview('left'); }
-      else if (cx >= window.innerWidth - SNAP_EDGE) { snapZone = 'right'; showSnapPreview('right'); }
-      else if (cy <= SNAP_EDGE) { snapZone = 'top'; showSnapPreview('top'); }
+      // Snap zone detection — trigger when cursor is within SNAP_EDGE_PX of screen edge
+      if (cx <= SNAP_EDGE_PX) { snapZone = 'left'; showSnapPreview('left'); }
+      else if (cx >= window.innerWidth - SNAP_EDGE_PX) { snapZone = 'right'; showSnapPreview('right'); }
+      else if (cy <= SNAP_EDGE_PX) { snapZone = 'top'; showSnapPreview('top'); }
       else { snapZone = null; hideSnapPreview(); }
     }
 

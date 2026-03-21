@@ -67,6 +67,12 @@
     return c + 273.15; // Kelvin
   }
 
+  /** Format a numeric result, trimming trailing zeros */
+  function formatNum(val, precision) {
+    if (val % 1 === 0) return String(val);
+    return val.toPrecision(precision).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
   function buildUI() {
     var catOptions = Object.keys(CATEGORIES).map(function (cat) {
       return '<option value="' + cat + '">' + cat + '</option>';
@@ -134,7 +140,7 @@
         result = baseVal / cat.toBase[toIdx];
       }
 
-      resultEl.value = result % 1 === 0 ? String(result) : result.toPrecision(8).replace(/0+$/, '').replace(/\.$/, '');
+      resultEl.value = formatNum(result, 8);
       formulaEl.textContent = val + ' ' + cat.units[fromIdx] + ' = ' + resultEl.value + ' ' + cat.units[toIdx];
 
       // Quick reference: convert 1, 10, 100
@@ -145,8 +151,7 @@
         } else {
           r = (n * cat.toBase[fromIdx]) / cat.toBase[toIdx];
         }
-        var rStr = r % 1 === 0 ? String(r) : r.toPrecision(6).replace(/0+$/, '').replace(/\.$/, '');
-        return '<div class="uc-quick-item">' + n + ' ' + cat.units[fromIdx] + ' = ' + rStr + ' ' + cat.units[toIdx] + '</div>';
+        return '<div class="uc-quick-item">' + n + ' ' + cat.units[fromIdx] + ' = ' + formatNum(r, 6) + ' ' + cat.units[toIdx] + '</div>';
       }).join('');
     }
 
