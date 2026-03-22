@@ -18,7 +18,7 @@
 
 'use strict';
 
-const CACHE_NAME  = 'nightmareos-v3';
+const CACHE_NAME  = 'nightmareos-v4';
 const PROXY_PATH  = '/nmproxy';
 
 const APP_SHELL = [
@@ -57,6 +57,13 @@ const APP_SHELL = [
   '/js/apps/todolist.js',
   '/js/apps/stopwatch.js',
   '/js/apps/colorpicker.js',
+  '/js/apps/markdown.js',
+  '/js/apps/pomodoro.js',
+  '/js/apps/weather.js',
+  '/js/apps/passwordgen.js',
+  '/js/apps/unitconverter.js',
+  '/js/apps/habittracker.js',
+  '/js/apps/systeminfo.js',
 ];
 
 /* ── Install: cache app shell ──────────────────────────────────────── */
