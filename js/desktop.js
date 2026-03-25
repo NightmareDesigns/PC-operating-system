@@ -6,10 +6,13 @@
 
 'use strict';
 
+const DEFAULT_BOOT_MESSAGE = 'Welcome to Windows PE!';
+
 /* ---- Global OS State ---- */
 const NightOS = {
   version: '2.0.0',
   displayName: 'Windows PE',
+  defaultBootMessage: DEFAULT_BOOT_MESSAGE,
   username: 'User',
   platform: navigator.platform || 'Unknown',
   /** @type {Map<string, {title:string, icon:string, open:function}>} */
@@ -23,7 +26,7 @@ const NightOS = {
     matrixWallpaper: true,
     accentColor: '#4f8ef7',
     username: 'User',
-    bootMessage: 'Welcome to Windows PE!',
+    bootMessage: DEFAULT_BOOT_MESSAGE,
   },
 
   /** Register an application */

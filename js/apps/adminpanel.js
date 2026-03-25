@@ -62,7 +62,7 @@
           <div class="admin-label">Custom Boot Message<small>Shown on the final boot step</small></div>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="text" class="admin-input" id="adm-boot-msg"
-                   value="${escHtml(NightOS.settings.bootMessage || 'Welcome to Windows PE!')}"
+                   value="${escHtml(NightOS.settings.bootMessage || NightOS.defaultBootMessage)}"
                    maxlength="80" placeholder="Boot message…" />
             <button class="win-toolbar-btn" id="adm-boot-msg-save">Apply</button>
           </div>
