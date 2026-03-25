@@ -62,7 +62,7 @@
           <div class="admin-label">Custom Boot Message<small>Shown on the final boot step</small></div>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="text" class="admin-input" id="adm-boot-msg"
-                   value="${escHtml(NightOS.settings.bootMessage || 'Welcome to NightmareOS!')}"
+                   value="${escHtml(NightOS.settings.bootMessage || 'Welcome to Windows PE!')}"
                    maxlength="80" placeholder="Boot message…" />
             <button class="win-toolbar-btn" id="adm-boot-msg-save">Apply</button>
           </div>
@@ -158,7 +158,7 @@
       <div class="admin-section">
         <h3>Custom CSS</h3>
         <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px;">
-          Inject custom CSS to override any NightmareOS styles.
+          Inject custom CSS to override any ${escHtml(NightOS.displayName)} styles.
         </p>
         <textarea id="adm-custom-css" class="admin-textarea"
                   placeholder=":root { --accent: #ff0080; } .taskbar-start { background: red; }"
@@ -175,7 +175,7 @@
           <button class="win-toolbar-btn" id="adm-devtools">Open DevTools</button>
         </div>
         <div class="admin-row">
-          <div class="admin-label">Export Settings<small>Download your NightmareOS settings as JSON</small></div>
+          <div class="admin-label">Export Settings<small>Download your ${escHtml(NightOS.displayName)} settings as JSON</small></div>
           <button class="win-toolbar-btn" id="adm-export">Export</button>
         </div>
         <div class="admin-row">
@@ -223,9 +223,9 @@
     const cores = navigator.hardwareConcurrency || 'Unknown';
     return `
       <div class="admin-section">
-        <h3>NightmareOS</h3>
+        <h3>${escHtml(NightOS.displayName)}</h3>
         <table class="about-table">
-          <tr><td>Version</td><td>NightmareOS 2.0.0</td></tr>
+          <tr><td>Version</td><td>${escHtml(NightOS.displayName)} ${escHtml(NightOS.version)}</td></tr>
           <tr><td>WebKernel</td><td>2.0.0</td></tr>
           <tr><td>Platform</td><td>${escHtml(navigator.platform || 'Unknown')}</td></tr>
           <tr><td>CPU Cores</td><td>${cores}</td></tr>
@@ -442,7 +442,7 @@
       });
 
       el.querySelector('#adm-clear-all')?.addEventListener('click', () => {
-        if (!window.confirm('Clear ALL NightmareOS data and restart?')) return;
+        if (!window.confirm(`Clear ALL ${NightOS.displayName} data and restart?`)) return;
         let cleared = false;
         try { localStorage.clear(); cleared = true; } catch (_) {}
         if (cleared) {

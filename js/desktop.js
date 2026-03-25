@@ -9,7 +9,7 @@
 /* ---- Global OS State ---- */
 const NightOS = {
   version: '2.0.0',
-  displayName: 'NightmareOS',
+  displayName: 'Windows PE',
   username: 'User',
   platform: navigator.platform || 'Unknown',
   /** @type {Map<string, {title:string, icon:string, open:function}>} */
@@ -23,7 +23,7 @@ const NightOS = {
     matrixWallpaper: true,
     accentColor: '#4f8ef7',
     username: 'User',
-    bootMessage: 'Welcome to NightmareOS!',
+    bootMessage: 'Welcome to Windows PE!',
   },
 
   /** Register an application */
@@ -37,7 +37,7 @@ const NightOS = {
     if (app) {
       app.open();
     } else {
-      showNotification('NightmareOS', `App "${id}" not found.`);
+      showNotification(this.displayName, `App "${id}" not found.`);
     }
   },
 };
@@ -273,7 +273,7 @@ function initStartMenu() {
   else if (/Linux/i.test(ua)) platformName = 'Linux';
 
   const platformEl = $('start-platform');
-  if (platformEl) platformEl.textContent = `NightmareOS 2.0 · ${platformName}`;
+  if (platformEl) platformEl.textContent = `${NightOS.displayName} ${NightOS.version} · ${platformName}`;
 
   btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -380,7 +380,7 @@ function shutdownOS() {
     document.body.innerHTML = `
       <div style="position:fixed;inset:0;background:#050709;display:flex;flex-direction:column;
         align-items:center;justify-content:center;gap:16px;color:white;font-family:system-ui;">
-        <p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">NightOS has shut down.</p>
+        <p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">${NightOS.displayName} has shut down.</p>
         <p style="font-size:0.82rem;color:#8892a4;">Close this tab or refresh to restart.</p>
       </div>`;
   }
@@ -468,7 +468,7 @@ function initDesktop() {
   initGlobalShortcuts();
   // Render persisted sticky notes
   if (window.StickyNotes) window.StickyNotes.renderSaved();
-  showNotification('NightmareOS', `Welcome, ${NightOS.username}! ` +
+  showNotification(NightOS.displayName, `Welcome, ${NightOS.username}! ` +
     'Running on ' + (navigator.platform || 'your device') + '.');
   if (window._recoveryMode) {
     showNotification('Recovery Mode', 'System booted in recovery mode. All services running normally.');
