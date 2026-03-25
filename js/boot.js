@@ -125,9 +125,21 @@
     return (window.NightOS && NightOS.displayName) || 'Windows PE';
   }
 
+  function getStoredSettings() {
+    try {
+      return JSON.parse(localStorage.getItem('nightos_settings') || '{}');
+    } catch (error) {
+      console.warn('[Windows PE] Failed to parse stored settings:', error);
+      return {};
+    }
+  }
+
   function getBootMessage() {
-    if (typeof loadSettings === 'function') loadSettings();
-    return (window.NightOS && NightOS.settings && NightOS.settings.bootMessage) || 'Welcome to Windows PE!';
+    const storedSettings = getStoredSettings();
+    const defaultBootMessage = (window.NightOS && NightOS.defaultBootMessage) || 'Welcome to Windows PE!';
+    return storedSettings.bootMessage ||
+      (window.NightOS && NightOS.settings && NightOS.settings.bootMessage) ||
+      defaultBootMessage;
   }
 
   function getKernelSteps() {
@@ -241,7 +253,7 @@
     { text: '[SHUTDOWN] Stopping user session…\n', delay: 120 },
     { text: '[SHUTDOWN] Saving user preferences… ', delay: 200 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
-    { text: '[SHUTDOWN] Stopping Windows PE Desktop Manager… ', delay: 150 },
+    { text: `[SHUTDOWN] Stopping ${getDisplayName()} Desktop Manager… `, delay: 150 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
     { text: '[SHUTDOWN] Stopping system services… ', delay: 200 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
