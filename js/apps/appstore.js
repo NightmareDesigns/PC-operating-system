@@ -85,7 +85,7 @@
             <span class="appstore-win-chevron">▼</span>
           </div>
           <div class="appstore-win-body">
-            <p>NightmareOS runs entirely in your web browser. It <strong>cannot natively execute</strong>
+            <p>${escHtml(NightOS.displayName)} runs entirely in your web browser. It <strong>cannot natively execute</strong>
                Windows <code>.exe</code> or <code>.msi</code> files.</p>
             <p>To run Windows software you can use one of these approaches:</p>
             <div class="appstore-win-options">

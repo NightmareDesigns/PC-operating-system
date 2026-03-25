@@ -122,7 +122,7 @@
         <div class="browser-home" id="br-home-page">
           <div class="browser-home-inner">
             <div class="browser-home-logo">🌐</div>
-            <div class="browser-home-title">NightmareOS Browser</div>
+            <div class="browser-home-title">${escHtml(NightOS.displayName)} Browser</div>
             <div class="browser-home-search">
               <input type="text" id="br-home-search" class="browser-home-input"
                      placeholder="Search DuckDuckGo or enter URL…" autocomplete="off" />

@@ -81,7 +81,7 @@
         '<div class="ff-home" id="ff-home-page">' +
           '<div class="ff-home-inner">' +
             '<div class="ff-home-logo">🦊</div>' +
-            '<div class="ff-home-title">Firefox for NightmareOS</div>' +
+            '<div class="ff-home-title">Firefox for ' + escHtml(NightOS.displayName) + '</div>' +
             '<div class="ff-home-subtitle">Full-capability browser — supports everything Firefox can</div>' +
             '<div class="ff-home-search">' +
               '<input type="text" id="ff-home-search" class="ff-home-input" placeholder="Search with DuckDuckGo or enter URL…" autocomplete="off" />' +
@@ -504,4 +504,3 @@
     open: open,
   });
 })();
-

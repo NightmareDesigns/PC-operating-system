@@ -54,7 +54,7 @@ if (window.MatrixWallpaper) {
     {
       id: 'builtin-notification-test',
       name: 'Test Notification',
-      description: 'Sends a test notification to the NightmareOS desktop.',
+      description: 'Sends a test notification to the Windows PE desktop.',
       enabled: false,
       builtin: true,
       code: `// Test notification
@@ -170,11 +170,11 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
               <button class="win-toolbar-btn" id="sm-clear-editor-btn">🗑️</button>
             </div>
             <div style="padding:4px 10px;font-size:0.7rem;color:#ffd60a;background:rgba(255,214,10,0.08);border-bottom:1px solid rgba(255,214,10,0.15);flex-shrink:0;">
-              ⚠️ Scripts run with full access to NightmareOS. Only run code you trust.
+              ⚠️ Scripts run with full access to ${escHtml(NightOS.displayName)}. Only run code you trust.
             </div>
             <textarea class="sm-editor" id="sm-editor"
                       placeholder="// Write your JavaScript here…
-// You have access to all NightmareOS globals:
+// You have access to all Windows PE globals:
 // showNotification(title, body)
 // NightOS.launchApp(id)
 // WindowManager, MatrixWallpaper, etc."
@@ -196,7 +196,7 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
               </label>
             </div>
             <div style="padding:4px 10px;font-size:0.7rem;color:#ffd60a;background:rgba(255,214,10,0.08);border-bottom:1px solid rgba(255,214,10,0.15);flex-shrink:0;">
-              ⚠️ Console executes JavaScript with full NightmareOS access. Only run code you trust.
+              ⚠️ Console executes JavaScript with full ${escHtml(NightOS.displayName)} access. Only run code you trust.
             </div>
             <div class="sm-console" id="sm-console" role="log" aria-label="Console output" aria-live="polite"></div>
             <div class="sm-console-input-row">
@@ -212,7 +212,7 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
             <div class="sm-about">
               <div class="sm-about-logo">📜</div>
               <div class="sm-about-title">Script Manager</div>
-              <div class="sm-about-sub">NightmareOS · Tampermonkey-style userscript runner</div>
+              <div class="sm-about-sub">${escHtml(NightOS.displayName)} · Tampermonkey-style userscript runner</div>
               <div class="sm-about-shortcuts">
                 <div class="sm-about-shortcut">
                   <kbd>Ctrl+Alt+S</kbd> — Open Script Manager
@@ -223,7 +223,7 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
               </div>
               <p class="sm-about-desc">
                 Script Manager lets you write, install, and run JavaScript userscripts
-                inside NightmareOS. Scripts can interact with any part of the desktop —
+                inside ${escHtml(NightOS.displayName)}. Scripts can interact with any part of the desktop —
                 change the appearance, automate tasks, display notifications, and more.<br><br>
                 For the real Tampermonkey browser extension (works in actual Firefox/Chrome),
                 visit <a href="https://www.tampermonkey.net" target="_blank" rel="noopener noreferrer"

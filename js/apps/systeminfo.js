@@ -9,7 +9,7 @@
   function open() {
     var el = WindowManager.create({
       id: 'systeminfo',
-      title: 'About NightmareOS',
+      title: 'About Windows PE',
       icon: 'ℹ️',
       width: 520,
       height: 500,
@@ -28,7 +28,7 @@
       '      <path d="M40 66 L26 46 H54 Z" fill="#00ff41" opacity="0.6"/>',
       '      <circle cx="40" cy="40" r="8" fill="#00ff41"/>',
       '    </svg>',
-      '    <div class="sysinfo-title">NightmareOS</div>',
+      '    <div class="sysinfo-title">' + escHtml(NightOS.displayName) + '</div>',
       '    <div class="sysinfo-ver" id="sysinfo-ver"></div>',
       '  </div>',
       '  <div class="sysinfo-tabs">',
@@ -48,7 +48,7 @@
   }
 
   function initSysInfo(el) {
-    el.querySelector('#sysinfo-ver').textContent = 'Version ' + NightOS.version + ' — Web Desktop Environment';
+    el.querySelector('#sysinfo-ver').textContent = 'Version ' + NightOS.version + ' — Web Recovery Environment';
     var contentEl = el.querySelector('#sysinfo-content');
 
     function showTab(tab) {

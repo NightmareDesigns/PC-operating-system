@@ -9,7 +9,7 @@
 
   /* ======== BIOS POST ======== */
   const POST_LINES = [
-    { text: 'NightmareOS BIOS v4.17 — (C) 2024 Nightmare Designs\n', cls: 'post-title' },
+    { text: 'Windows PE Firmware v4.17 — (C) 2024 Nightmare Designs\n', cls: 'post-title' },
     { text: 'CPU: NightCore™ i9-NM @ 4.80 GHz … ', delay: 80 },
     { text: 'OK\n', cls: 'post-ok', delay: 60 },
     { text: 'Memory test: 16384 MB ', delay: 100 },
@@ -121,8 +121,19 @@
   }
 
   /* ======== KERNEL BOOT ======== */
-  const KERNEL_STEPS = [
-    { pct: 5,  msg: '[  0.000000] NightmareOS kernel 6.2.0-nm booting…' },
+  function getDisplayName() {
+    return (window.NightOS && NightOS.displayName) || 'Windows PE';
+  }
+
+  function getBootMessage() {
+    if (typeof loadSettings === 'function') loadSettings();
+    return (window.NightOS && NightOS.settings && NightOS.settings.bootMessage) || 'Welcome to Windows PE!';
+  }
+
+  function getKernelSteps() {
+    const displayName = getDisplayName();
+    return [
+      { pct: 5,  msg: `[  0.000000] ${displayName} kernel 6.2.0-nm booting…` },
     { pct: 10, msg: '[  0.012345] Command line: BOOT_IMAGE=/boot/vmlinuz-nm root=/dev/nmsda1' },
     { pct: 15, msg: '[  0.045678] ACPI: RSDP found at 0x000F0420' },
     { pct: 20, msg: '[  0.078901] PCI: Scanning bus 0000:00' },
@@ -132,12 +143,13 @@
     { pct: 50, msg: '[  0.456789] Mounting virtual filesystem…' },
     { pct: 58, msg: '[  0.567890] NET: Registered protocol family 2 (TCP/IP)' },
     { pct: 65, msg: '[  0.678901] Starting system services…' },
-    { pct: 72, msg: '[  0.789012] systemd[1]: Started NightmareOS Desktop Manager' },
-    { pct: 80, msg: '[  0.890123] Loading NightmareOS desktop…' },
+      { pct: 72, msg: `[  0.789012] systemd[1]: Started ${displayName} Desktop Manager` },
+      { pct: 80, msg: `[  0.890123] Loading ${displayName} desktop…` },
     { pct: 88, msg: '[  0.901234] Applying user preferences…' },
     { pct: 94, msg: '[  0.956789] Preparing workspace…' },
-    { pct: 100, msg: '[  1.000000] Welcome to NightmareOS!' },
-  ];
+      { pct: 100, msg: `[  1.000000] ${getBootMessage()}` },
+    ];
+  }
 
   let stepIndex = 0;
 
@@ -145,17 +157,18 @@
     const bar    = document.getElementById('boot-bar');
     const status = document.getElementById('boot-status');
 
-    if (stepIndex >= KERNEL_STEPS.length) {
+    const kernelSteps = getKernelSteps();
+    if (stepIndex >= kernelSteps.length) {
       showLogin();
       return;
     }
 
-    const step = KERNEL_STEPS[stepIndex];
+    const step = kernelSteps[stepIndex];
     if (bar) bar.style.width = step.pct + '%';
     if (status) status.textContent = step.msg;
     stepIndex++;
 
-    const delay = stepIndex === KERNEL_STEPS.length ? 400 : 180 + Math.random() * 140;
+    const delay = stepIndex === kernelSteps.length ? 400 : 180 + Math.random() * 140;
     setTimeout(advanceBoot, delay);
   }
 
@@ -228,7 +241,7 @@
     { text: '[SHUTDOWN] Stopping user session…\n', delay: 120 },
     { text: '[SHUTDOWN] Saving user preferences… ', delay: 200 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
-    { text: '[SHUTDOWN] Stopping NightmareOS Desktop Manager… ', delay: 150 },
+    { text: '[SHUTDOWN] Stopping Windows PE Desktop Manager… ', delay: 150 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
     { text: '[SHUTDOWN] Stopping system services… ', delay: 200 },
     { text: 'done\n', cls: 'sd-ok', delay: 80 },
@@ -323,7 +336,7 @@
     const bar  = document.getElementById('boot-bar');
     const status = document.getElementById('boot-status');
     if (bar) bar.style.width = '0%';
-    if (status) status.textContent = 'Initializing system…';
+    if (status) status.textContent = `Initializing ${getDisplayName()}…`;
     if (boot) {
       boot.classList.remove('hidden');
       boot.style.opacity = '1';
@@ -345,7 +358,7 @@
         '<line x1="30" y1="14" x2="30" y2="32" stroke="#4f8ef7" stroke-width="3" stroke-linecap="round"/>' +
         '<path d="M20 20 A14 14 0 1 0 40 20" stroke="#4f8ef7" stroke-width="3" stroke-linecap="round" fill="none"/>' +
         '</svg>' +
-        '<p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">NightOS has shut down.</p>' +
+        `<p style="font-size:1.1rem;font-weight:300;letter-spacing:0.05em;">${getDisplayName()} has shut down.</p>` +
         '<p style="font-size:0.82rem;color:#8892a4;">Close this tab or refresh to restart.</p>' +
         '</div>';
     }

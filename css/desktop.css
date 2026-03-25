@@ -80,23 +80,21 @@ html, body {
 }
 
 .boot-logo h1 {
-  font-family: var(--horror-font);
+  font-family: var(--font);
   font-size: 3rem;
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--blood-red);
-  text-shadow: var(--blood-shadow);
-  animation: blood-pulse 3s ease-in-out infinite;
+  color: var(--accent-light);
+  text-shadow: 0 0 14px rgba(79, 142, 247, 0.35);
+  animation: boot-glow 3s ease-in-out infinite;
 }
 
-@keyframes blood-pulse {
-  0%, 100% { text-shadow: var(--blood-shadow); }
+@keyframes boot-glow {
+  0%, 100% { text-shadow: 0 0 14px rgba(79, 142, 247, 0.35); }
   50% {
     text-shadow:
-      0 0  14px rgba(220, 20, 20, 0.95),
-      0 0  32px rgba(180,  0,  0, 0.55),
-      1px 10px  5px rgba(160,  0,  0, 0.9),
-      2px 20px  9px rgba(110,  0,  0, 0.55);
+      0 0 14px rgba(79, 142, 247, 0.95),
+      0 0 32px rgba(37, 99, 235, 0.45);
   }
 }
 

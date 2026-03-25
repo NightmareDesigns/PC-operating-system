@@ -1,7 +1,7 @@
 {
-  "name": "NightmareOS — Web Desktop Environment",
-  "short_name": "NightmareOS",
-  "description": "A standalone web-based desktop operating system with full browsing capabilities.",
+  "name": "Windows PE — Web Recovery Environment",
+  "short_name": "Windows PE",
+  "description": "A standalone web-based recovery desktop environment with full browsing capabilities.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",

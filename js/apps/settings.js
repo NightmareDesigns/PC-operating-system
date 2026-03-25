@@ -94,7 +94,7 @@
         <h3>Platform</h3>
         <div class="settings-row">
           <div class="settings-label">OS</div>
-          <span style="font-size:0.82rem;color:var(--text-primary)">NightmareOS 2.0.0</span>
+          <span style="font-size:0.82rem;color:var(--text-primary)">${escHtml(NightOS.displayName)} ${escHtml(NightOS.version)}</span>
         </div>
         <div class="settings-row">
           <div class="settings-label">Platform</div>
@@ -121,7 +121,7 @@
       <div class="settings-section">
         <h3>Storage</h3>
         <div class="settings-row">
-          <div class="settings-label">Clear all settings<small>Resets NightmareOS to defaults</small></div>
+          <div class="settings-label">Clear all settings<small>Resets ${escHtml(NightOS.displayName)} to defaults</small></div>
           <button class="win-toolbar-btn" id="btn-clear-storage" style="min-width:100px;">Clear Data</button>
         </div>
       </div>`;
@@ -222,7 +222,7 @@
       <div class="settings-section">
         <h3>Privacy &amp; Storage</h3>
         <div class="settings-row">
-          <div class="settings-label">LocalStorage Used<small>Data stored by NightmareOS</small></div>
+          <div class="settings-label">LocalStorage Used<small>Data stored by ${escHtml(NightOS.displayName)}</small></div>
           <span style="font-size:0.82rem;color:var(--text-primary)">${storageUsed}</span>
         </div>
         <div class="settings-row">
@@ -242,7 +242,7 @@
           <button class="win-toolbar-btn" id="btn-clear-colors" style="min-width:100px;">Clear Colors</button>
         </div>
         <div class="settings-row">
-          <div class="settings-label">Clear All Data<small>Resets NightmareOS to defaults</small></div>
+          <div class="settings-label">Clear All Data<small>Resets ${escHtml(NightOS.displayName)} to defaults</small></div>
           <button class="win-toolbar-btn" id="btn-clear-all" style="min-width:100px;color:#ef4444;">Clear All</button>
         </div>
       </div>`;
@@ -285,17 +285,17 @@
             <circle cx="40" cy="40" r="8" fill="#00ff41"/>
           </svg>
         </div>
-        <div class="about-name">NightmareOS</div>
-        <div class="about-version">Version 2.0.0 — Web Desktop Environment</div>
+        <div class="about-name">${escHtml(NightOS.displayName)}</div>
+        <div class="about-version">Version ${escHtml(NightOS.version)} — Web Recovery Environment</div>
         <table class="about-table">
-          <tr><td>Kernel</td><td>NightmareOS WebKernel 2.0</td></tr>
+          <tr><td>Kernel</td><td>${escHtml(NightOS.displayName)} WebShell ${escHtml(NightOS.version)}</td></tr>
           <tr><td>Build</td><td>${new Date().getFullYear()}</td></tr>
           <tr><td>Platforms</td><td>Windows · macOS · Linux · Android · iOS</td></tr>
           <tr><td>Renderer</td><td>Web Browser (HTML5 + CSS3 + ES2020)</td></tr>
           <tr><td>License</td><td>MIT</td></tr>
         </table>
         <p style="font-size:0.78rem;color:var(--text-secondary);margin-top:16px;text-align:center;line-height:1.6;">
-          NightmareOS is a web-based desktop environment that runs<br>in any modern browser on any operating system or device.
+          ${escHtml(NightOS.displayName)} is a web-based recovery desktop environment that runs<br>in any modern browser on any operating system or device.
         </p>
       </div>`;
   }
@@ -414,7 +414,7 @@
       const clearBtn = panelEl.querySelector('#btn-clear-storage');
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-          if (window.confirm('Clear all NightOS settings and restart?')) {
+          if (window.confirm(`Clear all ${NightOS.displayName} settings and restart?`)) {
             try { localStorage.removeItem('nightos_settings'); } catch (_) { /* ignore */ }
             showNotification('Settings', 'Settings cleared. Restarting…');
             setTimeout(() => restartOS(), 1500);
@@ -504,7 +504,7 @@
       const clearAll = panelEl.querySelector('#btn-clear-all');
       if (clearAll) {
         clearAll.addEventListener('click', () => {
-          if (window.confirm('Clear ALL NightmareOS data and restart?')) {
+          if (window.confirm(`Clear ALL ${NightOS.displayName} data and restart?`)) {
             try { localStorage.clear(); } catch (_) {}
             showNotification('Settings', 'All data cleared. Restarting…');
             setTimeout(() => restartOS(), 1500);
