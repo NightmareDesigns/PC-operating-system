@@ -54,7 +54,7 @@ if (window.MatrixWallpaper) {
     {
       id: 'builtin-notification-test',
       name: 'Test Notification',
-      description: 'Sends a test notification to the Windows PE desktop.',
+      description: 'Sends a test notification to the Nightmare OS desktop.',
       enabled: false,
       builtin: true,
       code: `// Test notification
@@ -174,7 +174,7 @@ console.log('[ScriptManager] Rainbow mode active. To stop: clearInterval(window.
             </div>
             <textarea class="sm-editor" id="sm-editor"
                       placeholder="// Write your JavaScript here…
-// You have access to all Windows PE globals:
+// You have access to all Nightmare OS globals:
 // showNotification(title, body)
 // NightOS.launchApp(id)
 // WindowManager, MatrixWallpaper, etc."
