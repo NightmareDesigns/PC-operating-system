@@ -1,13 +1,13 @@
 {
-  "name": "Nightmare OS — Web Desktop Environment",
-  "short_name": "Nightmare OS",
-  "description": "A nightmare-themed web desktop environment with full productivity and browsing capabilities.",
+  "name": "Windows PE — Web Recovery Environment",
+  "short_name": "Windows PE",
+  "description": "A standalone web-based recovery desktop environment with full browsing capabilities.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0a0014",
-  "theme_color": "#0a0014",
+  "background_color": "#050709",
+  "theme_color": "#050709",
   "categories": ["utilities", "productivity"],
   "icons": [
     {

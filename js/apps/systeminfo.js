@@ -9,7 +9,7 @@
   function open() {
     var el = WindowManager.create({
       id: 'systeminfo',
-      title: 'About Nightmare OS',
+      title: 'About Windows PE',
       icon: 'ℹ️',
       width: 520,
       height: 500,
