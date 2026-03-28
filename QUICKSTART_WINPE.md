@@ -37,7 +37,9 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 4. Wait for build to complete (10-20 minutes)
 
-### Step 3: Create Bootable USB
+### Step 3: Create Bootable Media
+
+**Option A: Bootable USB**
 
 1. Insert USB drive (will be erased!)
 2. Note the drive letter (e.g., E:)
@@ -49,6 +51,21 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 4. Wait for completion (5-10 minutes)
 5. Safely eject USB drive
 
+**Option B: Bootable ISO**
+
+1. Build with ISO creation enabled:
+   ```powershell
+   .\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true
+   ```
+
+2. Or create ISO from existing build:
+   ```powershell
+   .\winpe\Create-ISO.ps1
+   ```
+
+3. ISO file created at: `C:\WinPE_NightmareOS\NightmareOS-PE.iso`
+4. Burn to DVD or use with virtual machines
+
 ## Booting from USB
 
 1. Insert USB into target computer
@@ -57,6 +74,20 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 4. Set USB as first boot device
 5. Save and exit
 6. Computer boots into Nightmare OS automatically!
+
+## Booting from ISO
+
+**In Virtual Machine:**
+1. Create new VM (VirtualBox, VMware, Hyper-V)
+2. Mount ISO as optical drive
+3. Start VM
+4. Nightmare OS boots automatically
+
+**On Physical Machine:**
+1. Burn ISO to DVD using Windows built-in burner
+2. Or create USB from ISO using Rufus
+3. Boot from DVD/USB
+4. Nightmare OS starts automatically
 
 ## What Happens on Boot
 

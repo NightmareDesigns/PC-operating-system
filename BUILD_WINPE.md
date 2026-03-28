@@ -81,6 +81,32 @@ After the build completes, use the included script to create a bootable USB:
 
 Replace `E:` with your USB drive letter.
 
+### Step 4 Alternative: Create Bootable ISO
+
+To create a bootable ISO file instead of or in addition to USB:
+
+**Option 1: During Build**
+
+```powershell
+# Run as Administrator
+.\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true
+```
+
+**Option 2: After Build**
+
+```powershell
+# Run as Administrator
+.\winpe\Create-ISO.ps1
+```
+
+The ISO file will be created at: `C:\WinPE_NightmareOS\NightmareOS-PE.iso`
+
+**ISO Usage:**
+- Burn to DVD using Windows built-in disc burner
+- Mount in virtual machines (VirtualBox, VMware, Hyper-V)
+- Create bootable USB using Rufus or similar tools
+- Test in VM before deploying to physical hardware
+
 ## Manual Build Process
 
 If you prefer to build manually, follow these steps:
@@ -153,11 +179,21 @@ Dism /Unmount-Image /MountDir:"C:\WinPE_NightmareOS\mount" /commit
 
 ### 7. Create Bootable Media
 
+**For USB:**
+
 ```cmd
 MakeWinPEMedia /UFD C:\WinPE_NightmareOS E:
 ```
 
 Replace `E:` with your USB drive letter.
+
+**For ISO:**
+
+```cmd
+oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"C:\WinPE_NightmareOS\media\boot\etfsboot.com"#pEF,e,b"C:\WinPE_NightmareOS\media\efi\microsoft\boot\efisys.bin" C:\WinPE_NightmareOS\media C:\WinPE_NightmareOS\NightmareOS-PE.iso
+```
+
+This creates a dual-boot ISO (BIOS + UEFI).
 
 ## Architecture
 

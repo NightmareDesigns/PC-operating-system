@@ -9,6 +9,7 @@ This directory contains scripts to build a bootable Windows 11 PE (Preinstallati
 - **`Check-Prerequisites.ps1`** - Validates that all required software is installed
 - **`Build-NightmareOS-PE.ps1`** - Main build script that creates the WinPE image
 - **`Create-Bootable-USB.ps1`** - Writes the WinPE image to a USB drive
+- **`Create-ISO.ps1`** - Creates a bootable ISO file from the WinPE media (NEW!)
 
 ### Batch Files
 
@@ -64,6 +65,32 @@ Options:
 - `-WorkDir` - WinPE working directory (default: `C:\WinPE_NightmareOS`)
 - `-Format` - Whether to format the drive (default: `$true`)
 
+### 4. Create Bootable ISO (NEW!)
+
+Creates a bootable ISO file that can be burned to DVD or used with VMs:
+
+**Option 1: During Build**
+
+```powershell
+.\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true
+```
+
+**Option 2: After Build**
+
+```powershell
+.\winpe\Create-ISO.ps1
+```
+
+Options for Create-ISO.ps1:
+- `-WorkDir` - WinPE working directory (default: `C:\WinPE_NightmareOS`)
+- `-OutputPath` - Custom path for ISO file (optional)
+
+**ISO Usage:**
+- Burn to DVD using Windows disc image burner
+- Mount in VirtualBox, VMware, or Hyper-V
+- Create bootable USB using Rufus
+- Test in VM before deploying to hardware
+
 ## Build Process Details
 
 ### What Build-NightmareOS-PE.ps1 Does
@@ -89,6 +116,14 @@ Options:
 2. **Confirms destructive operation** - Requires user to type "YES"
 3. **Runs MakeWinPEMedia** - Uses ADK tool to create bootable USB
 4. **Verifies contents** - Checks that boot files were written correctly
+
+### What Create-ISO.ps1 Does (NEW!)
+
+1. **Validates work directory** - Checks WinPE media directory exists
+2. **Locates oscdimg tool** - Finds oscdimg.exe from Windows ADK
+3. **Checks boot files** - Verifies BIOS and UEFI boot files exist
+4. **Creates ISO** - Builds bootable ISO with dual-boot support (BIOS + UEFI)
+5. **Reports status** - Displays ISO file size and usage instructions
 
 ### What startnet.cmd Does (On Boot)
 
