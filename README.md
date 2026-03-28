@@ -239,7 +239,8 @@ The Windows PE edition combines:
 1. **Install Windows ADK** (Windows Assessment and Deployment Kit)
 2. **Run build script**: `.\winpe\Build-NightmareOS-PE.ps1`
 3. **Create bootable USB**: `.\winpe\Create-Bootable-USB.ps1 -DriveLetter E:`
-4. **Boot from USB** on any compatible PC
+4. **Or create ISO**: `.\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true`
+5. **Boot from USB or ISO** on any compatible PC
 
 ### Documentation
 

@@ -20,6 +20,9 @@
 .PARAMETER IncludeEdge
     Include Microsoft Edge browser. Default: $true
 
+.PARAMETER CreateISO
+    Create a bootable ISO file in addition to USB media files. Default: $false
+
 .EXAMPLE
     .\Build-NightmareOS-PE.ps1
     Builds with default settings
@@ -27,6 +30,10 @@
 .EXAMPLE
     .\Build-NightmareOS-PE.ps1 -WorkDir "D:\WinPE_Build" -Architecture amd64
     Builds with custom working directory
+
+.EXAMPLE
+    .\Build-NightmareOS-PE.ps1 -CreateISO $true
+    Builds and creates a bootable ISO file
 #>
 
 [CmdletBinding()]
@@ -42,7 +49,10 @@ param(
     [bool]$IncludePython = $true,
 
     [Parameter(Mandatory=$false)]
-    [bool]$IncludeEdge = $true
+    [bool]$IncludeEdge = $true,
+
+    [Parameter(Mandatory=$false)]
+    [bool]$CreateISO = $false
 )
 
 # Set error action preference
@@ -401,17 +411,103 @@ if (-not $?) {
 Write-Success "Changes committed successfully"
 
 # Create ISO (optional)
-Write-Step "Preparing bootable media..."
-$isoPath = "$WorkDir\NightmareOS-PE.iso"
-$mediaDir = "$WorkDir\media"
+if ($CreateISO) {
+    Write-Step "Creating bootable ISO file..."
+    $isoPath = "$WorkDir\NightmareOS-PE.iso"
+    $mediaDir = "$WorkDir\media"
 
-Write-Host "Bootable media files are ready at: $mediaDir"
-Write-Host ""
-Write-Host "To create a bootable USB drive, run:"
-Write-Host "  .\Create-Bootable-USB.ps1 -DriveLetter <USB_DRIVE_LETTER>"
-Write-Host ""
-Write-Host "Or use MakeWinPEMedia manually:"
-Write-Host "  MakeWinPEMedia /UFD $WorkDir <USB_DRIVE_LETTER>"
+    # Check for oscdimg tool (part of Windows ADK)
+    $oscdimgPath = "$adkPath\Deployment Tools\$Architecture\Oscdimg\oscdimg.exe"
+
+    if (-not (Test-Path $oscdimgPath)) {
+        Write-Warning "oscdimg.exe not found at: $oscdimgPath"
+        Write-Warning "ISO creation skipped. Install Windows ADK Deployment Tools to enable ISO creation."
+    } else {
+        Write-Host "Using oscdimg: $oscdimgPath"
+        Write-Host "Creating ISO from: $mediaDir"
+        Write-Host "Output: $isoPath"
+
+        # oscdimg parameters:
+        # -m = Ignore maximum image size limit
+        # -o = Optimize storage by encoding duplicate files once
+        # -u2 = Produce UDF file system
+        # -udfver102 = UDF version 1.02
+        # -bootdata:2 = Two boot images (for BIOS and UEFI)
+        # First boot image: BIOS boot (etfsboot.com)
+        # Second boot image: UEFI boot (efisys.bin)
+
+        $etfsboot = "$mediaDir\boot\etfsboot.com"
+        $efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
+
+        # Check if boot files exist
+        if (-not (Test-Path $etfsboot)) {
+            Write-Warning "BIOS boot file not found: $etfsboot"
+            Write-Warning "Attempting ISO creation without BIOS boot support..."
+            $etfsboot = $null
+        }
+
+        if (-not (Test-Path $efisys)) {
+            Write-Warning "UEFI boot file not found: $efisys"
+            Write-Warning "Attempting ISO creation without UEFI boot support..."
+            $efisys = $null
+        }
+
+        try {
+            # Build oscdimg command based on available boot files
+            if ($etfsboot -and $efisys) {
+                # Both BIOS and UEFI boot
+                $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+            } elseif ($efisys) {
+                # UEFI boot only
+                $bootData = "2#pEF,e,b`"$efisys`""
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+            } elseif ($etfsboot) {
+                # BIOS boot only
+                $bootData = "1#p0,e,b`"$etfsboot`""
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+            } else {
+                # No boot files - create data-only ISO
+                Write-Warning "No boot files found - creating non-bootable ISO"
+                & $oscdimgPath -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
+            }
+
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "ISO created successfully!"
+                $isoSize = (Get-Item $isoPath).Length / 1MB
+                Write-Host "  • ISO File: $isoPath"
+                Write-Host "  • ISO Size: $([math]::Round($isoSize, 2)) MB"
+                Write-Host ""
+                Write-Host "You can now:" -ForegroundColor Yellow
+                Write-Host "  • Burn the ISO to a DVD"
+                Write-Host "  • Use with virtual machines (VirtualBox, VMware, Hyper-V)"
+                Write-Host "  • Create bootable USB with Rufus or similar tools"
+            } else {
+                Write-Error "ISO creation failed with exit code: $LASTEXITCODE"
+            }
+        } catch {
+            Write-Error "Error creating ISO: $_"
+        }
+    }
+} else {
+    Write-Step "Preparing bootable media..."
+    $isoPath = "$WorkDir\NightmareOS-PE.iso"
+    $mediaDir = "$WorkDir\media"
+
+    Write-Host "Bootable media files are ready at: $mediaDir"
+    Write-Host ""
+    Write-Host "To create a bootable ISO file, run:"
+    Write-Host "  .\winpe\Build-NightmareOS-PE.ps1 -CreateISO `$true"
+    Write-Host ""
+    Write-Host "Or use Create-ISO.ps1:"
+    Write-Host "  .\winpe\Create-ISO.ps1 -WorkDir $WorkDir"
+    Write-Host ""
+    Write-Host "To create a bootable USB drive, run:"
+    Write-Host "  .\winpe\Create-Bootable-USB.ps1 -DriveLetter <USB_DRIVE_LETTER>"
+    Write-Host ""
+    Write-Host "Or use MakeWinPEMedia manually:"
+    Write-Host "  MakeWinPEMedia /UFD $WorkDir <USB_DRIVE_LETTER>"
+}
 
 # Summary
 Write-Host @"
