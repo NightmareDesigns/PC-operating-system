@@ -17,10 +17,10 @@
     PATH: '/usr/bin:/bin',
     HOME, // same reference as the HOME constant above
     USER: 'user',
-    HOSTNAME: 'winpe',
+    HOSTNAME: 'nightmare',
     SHELL: '/bin/bash',
     TERM: 'xterm-256color',
-    OS: 'Windows PE 2.0.0',
+    OS: 'Nightmare OS 2.0.0',
   };
 
   // Command history is now maintained per-terminal instance inside initTerm.
@@ -35,16 +35,16 @@
     '/home/user/Documents': ['notes.txt', 'todo.txt'],
     '/home/user/Downloads': [],
     '/home/user/Pictures': [],
-    '/home/user/notes.txt': '# My Notes\n\nWelcome to Windows PE Terminal!',
-    '/home/user/Desktop/readme.txt': 'Welcome to Windows PE!\nA web-based recovery desktop environment.',
-    '/home/user/Documents/notes.txt': '## Notes\n\n- Explore Windows PE\n- Try the apps',
+    '/home/user/notes.txt': '# My Notes\n\nWelcome to Nightmare OS Terminal!',
+    '/home/user/Desktop/readme.txt': 'Welcome to Nightmare OS!\nA nightmare-themed web desktop environment.',
+    '/home/user/Documents/notes.txt': '## Notes\n\n- Explore Nightmare OS\n- Try the apps',
     '/home/user/Documents/todo.txt': 'TODO:\n[ ] Explore\n[ ] Have fun',
     '/usr': ['bin', 'lib'],
     '/usr/bin': ['ls', 'cat', 'echo', 'pwd', 'whoami'],
     '/bin': ['sh', 'bash'],
     '/etc': ['passwd', 'hostname'],
     '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:User:/home/user:/bin/bash',
-    '/etc/hostname': 'winpe',
+    '/etc/hostname': 'nightmare',
     '/tmp': [],
   };
 
