@@ -6,12 +6,12 @@
 
 'use strict';
 
-const DEFAULT_BOOT_MESSAGE = 'Welcome to Windows PE!';
+const DEFAULT_BOOT_MESSAGE = 'Welcome to Nightmare OS!';
 
 /* ---- Global OS State ---- */
 const NightOS = {
   version: '2.0.0',
-  displayName: 'Windows PE',
+  displayName: 'Nightmare OS',
   defaultBootMessage: DEFAULT_BOOT_MESSAGE,
   username: 'User',
   platform: navigator.platform || 'Unknown',
@@ -24,7 +24,7 @@ const NightOS = {
     fontSize: 'medium',
     volume: 80,
     matrixWallpaper: true,
-    accentColor: '#4f8ef7',
+    accentColor: '#8b00ff',
     username: 'User',
     bootMessage: DEFAULT_BOOT_MESSAGE,
     autoLaunchFirefox: true,
@@ -485,9 +485,9 @@ function initDesktop() {
     setTimeout(() => {
       if (NightOS.apps.has('firefox')) {
         NightOS.launchApp('firefox');
-        console.log('[Windows PE] Auto-launched Firefox browser');
+        console.log('[Nightmare OS] Auto-launched Firefox browser');
       } else {
-        console.warn('[Windows PE] Firefox app not found for auto-launch');
+        console.warn('[Nightmare OS] Firefox app not found for auto-launch');
       }
     }, 500);
   }
