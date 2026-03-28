@@ -2,9 +2,13 @@
 
 A fully web-based desktop operating system that runs in any modern browser on **Windows, macOS, Linux, and Android** (and any other platform with a browser).
 
+**🔥 NEW: Bootable Windows 11 PE Edition Available!** Create a bootable USB drive that boots directly into Nightmare OS. See [Windows PE Build Guide](#-bootable-windows-pe-edition) below.
+
 ---
 
 ## 🚀 Quick Start
+
+### Run in Browser (Easiest)
 
 **No installation required.** Just open `index.html` in any modern browser:
 
@@ -206,6 +210,91 @@ PC-operating-system/
 - **No dependencies** — pure HTML, CSS, and vanilla JavaScript
 - **No tracking** — no analytics, no cookies, no network requests (except when you use the Browser app)
 - Settings are persisted in `localStorage` only
+
+---
+
+## 💿 Bootable Windows PE Edition
+
+Want to boot Nightmare OS directly from a USB drive without needing a browser or operating system? You can create a **bootable Windows 11 PE (Preinstallation Environment)** with Nightmare OS built-in!
+
+### What is Windows PE Edition?
+
+The Windows PE edition combines:
+- **Windows 11 PE kernel** (lightweight Windows for recovery/deployment)
+- **Nightmare OS web desktop** (all 30+ apps included)
+- **Auto-start functionality** (boots straight into Nightmare OS)
+- **Bootable USB support** (no operating system installation needed)
+
+### Features
+
+✅ Boots directly from USB drive (no OS required)
+✅ Runs on any x64 PC (minimum 2 GB RAM)
+✅ All Nightmare OS apps work perfectly
+✅ Network support included (wired ethernet recommended)
+✅ Full desktop environment with all features
+✅ Compatible with UEFI and Legacy BIOS
+
+### Quick Start
+
+1. **Install Windows ADK** (Windows Assessment and Deployment Kit)
+2. **Run build script**: `.\winpe\Build-NightmareOS-PE.ps1`
+3. **Create bootable USB**: `.\winpe\Create-Bootable-USB.ps1 -DriveLetter E:`
+4. **Boot from USB** on any compatible PC
+
+### Documentation
+
+- **📘 [Quick Start Guide](QUICKSTART_WINPE.md)** — Fast track to creating your bootable USB (recommended)
+- **📗 [Complete Build Guide](BUILD_WINPE.md)** — Detailed documentation with troubleshooting
+
+### Requirements
+
+**Build Computer:**
+- Windows 11 (any edition)
+- Windows ADK for Windows 11 (free download)
+- Administrator access
+- 20 GB free disk space
+- USB drive (16 GB or larger)
+
+**Target Computer (where you boot from USB):**
+- x64 processor (64-bit CPU)
+- 2 GB RAM minimum (4 GB recommended)
+- BIOS with Secure Boot disabled
+- USB boot support
+
+### Important Limitations
+
+⚠️ **No persistence**: All data is stored in RAM and lost on reboot
+⚠️ **72-hour limit**: Windows PE automatically reboots after 72 hours
+⚠️ **Limited drivers**: Basic hardware support only (most modern hardware works)
+⚠️ **Temporary storage**: Files are saved to RAM disk, not permanent storage
+
+### Use Cases
+
+Perfect for:
+- 💻 **Portable workstation** — Carry your OS on a USB stick
+- 🔧 **System recovery** — Boot any PC when the OS fails
+- 🧪 **Testing environment** — Try Nightmare OS on real hardware
+- 🏫 **Education** — Learn about Windows PE and bootable systems
+- 🎮 **Demo/presentation** — Show off Nightmare OS anywhere
+- 🔒 **Privacy** — No traces left after reboot (everything in RAM)
+
+### Architecture
+
+```
+USB Drive → BIOS/UEFI → Windows PE Kernel → Auto-start Script
+                                                    ↓
+                                          Python Web Server (localhost:8080)
+                                                    ↓
+                                          Microsoft Edge (Kiosk Mode)
+                                                    ↓
+                                          Nightmare OS Desktop
+```
+
+### Getting Started
+
+See **[QUICKSTART_WINPE.md](QUICKSTART_WINPE.md)** for step-by-step instructions to create your bootable USB drive in about 30-60 minutes.
+
+For advanced customization and troubleshooting, see **[BUILD_WINPE.md](BUILD_WINPE.md)**.
 
 ---
 
