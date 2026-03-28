@@ -27,6 +27,7 @@ const NightOS = {
     accentColor: '#8b00ff',
     username: 'User',
     bootMessage: DEFAULT_BOOT_MESSAGE,
+    autoLaunchFirefox: true,
   },
 
   /** Register an application */
@@ -477,6 +478,22 @@ function initDesktop() {
     showNotification('Recovery Mode', 'System booted in recovery mode. All services running normally.');
     window._recoveryMode = false;
   }
+
+  // Auto-launch Firefox browser if enabled
+  if (NightOS.settings.autoLaunchFirefox) {
+    // Use setTimeout to ensure all apps are fully registered before launching
+    setTimeout(() => {
+      if (NightOS.apps.has('firefox')) {
+        NightOS.launchApp('firefox');
+        console.log('[Nightmare OS] Auto-launched Firefox browser');
+      } else {
+        console.warn('[Nightmare OS] Firefox app not found for auto-launch');
+      }
+    }, 500);
+  }
+
+  // Dispatch ready event for extensions/userscripts
+  window.dispatchEvent(new CustomEvent('nightmareos-ready'));
 }
 
 // Exposed globally so boot.js can call it
