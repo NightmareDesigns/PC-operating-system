@@ -9,7 +9,7 @@
 
   /* ======== BIOS POST ======== */
   const POST_LINES = [
-    { text: 'Windows PE Firmware v4.17 — (C) 2024 Nightmare Designs\n', cls: 'post-title' },
+    { text: 'Nightmare OS Firmware v4.17 — (C) 2024 Nightmare Designs\n', cls: 'post-title' },
     { text: 'CPU: NightCore™ i9-NM @ 4.80 GHz … ', delay: 80 },
     { text: 'OK\n', cls: 'post-ok', delay: 60 },
     { text: 'Memory test: 16384 MB ', delay: 100 },
@@ -122,21 +122,21 @@
 
   /* ======== KERNEL BOOT ======== */
   function getDisplayName() {
-    return (window.NightOS && NightOS.displayName) || 'Windows PE';
+    return (window.NightOS && NightOS.displayName) || 'Nightmare OS';
   }
 
   function getStoredSettings() {
     try {
       return JSON.parse(localStorage.getItem('nightos_settings') || '{}');
     } catch (error) {
-      console.warn('[Windows PE] Failed to parse stored settings:', error);
+      console.warn('[Nightmare OS] Failed to parse stored settings:', error);
       return {};
     }
   }
 
   function getBootMessage() {
     const storedSettings = getStoredSettings();
-    const defaultBootMessage = (window.NightOS && NightOS.defaultBootMessage) || 'Welcome to Windows PE!';
+    const defaultBootMessage = (window.NightOS && NightOS.defaultBootMessage) || 'Welcome to Nightmare OS!';
     return storedSettings.bootMessage ||
       (window.NightOS && NightOS.settings && NightOS.settings.bootMessage) ||
       defaultBootMessage;
