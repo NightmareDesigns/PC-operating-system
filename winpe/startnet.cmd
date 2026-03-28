@@ -37,6 +37,7 @@ echo.
 REM Set up environment variables
 set NIGHTMARE_OS_DIR=X:\NightmareOS
 set PYTHON_DIR=X:\Python
+set DATA_PARTITION=D:\NightmareOS-Data
 
 REM Check if Nightmare OS files exist
 if not exist "%NIGHTMARE_OS_DIR%\index.html" (
@@ -49,6 +50,23 @@ if not exist "%NIGHTMARE_OS_DIR%\index.html" (
 
 echo [+] Nightmare OS files found
 echo.
+
+REM Check for data partition (for persistence)
+echo [*] Checking for data partition...
+if exist D:\ (
+    echo [+] Data partition found at D:\
+    if not exist "%DATA_PARTITION%" (
+        mkdir "%DATA_PARTITION%" 2>nul
+        echo [+] Created persistence directory
+    )
+    echo [+] Persistence enabled - data will survive reboots
+    echo.
+) else (
+    echo [-] No data partition found
+    echo [-] Running in RAM-only mode - data will be lost on reboot
+    echo     To enable persistence, create a second partition on your USB drive
+    echo.
+)
 
 REM Change to Nightmare OS directory
 cd /d "%NIGHTMARE_OS_DIR%"
@@ -123,7 +141,11 @@ echo.
 echo Quick Tips:
 echo   - Press Alt+Tab to switch between browser and command prompt
 echo   - Press Ctrl+Alt+Del to access Task Manager
-echo   - All changes are stored in RAM (lost on reboot)
+if exist D:\ (
+    echo   - Persistence ENABLED: Data saved to D:\NightmareOS-Data
+) else (
+    echo   - Persistence DISABLED: All changes stored in RAM ^(lost on reboot^)
+)
 echo   - PE automatically reboots after 72 hours
 echo.
 echo Troubleshooting:

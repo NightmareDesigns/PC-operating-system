@@ -34,6 +34,7 @@ const APP_SHELL = [
   '/js/windowmanager.js',
   '/js/boot.js',
   '/js/sync.js',
+  '/js/persistence.js',
   '/js/apps/filemanager.js',
   '/js/apps/texteditor.js',
   '/js/apps/calculator.js',

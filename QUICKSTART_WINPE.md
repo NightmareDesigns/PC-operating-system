@@ -69,10 +69,11 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 ## Important Limitations
 
-⚠ **No Persistence**: Everything is stored in RAM
+⚠ **Persistence (Optional)**: By default, everything is stored in RAM
    - Changes are lost when you reboot
    - Files you create are temporary
    - Settings don't save between boots
+   - **NEW**: You can enable persistence! See [Persistence Guide](PERSISTENCE_GUIDE.md) to make data survive reboots
 
 ⚠ **72 Hour Limit**: Windows PE reboots automatically after 72 hours
 

@@ -245,6 +245,7 @@ The Windows PE edition combines:
 
 - **📘 [Quick Start Guide](QUICKSTART_WINPE.md)** — Fast track to creating your bootable USB (recommended)
 - **📗 [Complete Build Guide](BUILD_WINPE.md)** — Detailed documentation with troubleshooting
+- **💾 [Persistence Guide](PERSISTENCE_GUIDE.md)** — Enable data persistence across reboots (NEW!)
 
 ### Requirements
 
@@ -263,10 +264,13 @@ The Windows PE edition combines:
 
 ### Important Limitations
 
-⚠️ **No persistence**: All data is stored in RAM and lost on reboot
+⚠️ **Persistence**: By default, data is stored in RAM and lost on reboot
+   - **Solution**: Create a second partition on USB for persistence - see [Persistence Guide](PERSISTENCE_GUIDE.md)
+   - With persistence enabled, settings, bookmarks, todos, and other data survive reboots!
+
 ⚠️ **72-hour limit**: Windows PE automatically reboots after 72 hours
 ⚠️ **Limited drivers**: Basic hardware support only (most modern hardware works)
-⚠️ **Temporary storage**: Files are saved to RAM disk, not permanent storage
+⚠️ **Temporary system files**: Windows PE system files are always in RAM
 
 ### Use Cases
 
