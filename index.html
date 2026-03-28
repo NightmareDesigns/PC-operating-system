@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Nightmare OS — Web Desktop Environment</title>
+  <title>Windows PE — Web Recovery Environment</title>
   <!-- PWA: manifest + meta for standalone install -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0a0014" />
+  <meta name="theme-color" content="#050709" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Nightmare OS" />
+  <meta name="apple-mobile-web-app-title" content="Windows PE" />
   <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="application-name" content="Nightmare OS" />
-  <meta name="description" content="A nightmare-themed web desktop environment with full productivity and browsing capabilities." />
+  <meta name="application-name" content="Windows PE" />
+  <meta name="description" content="A standalone web-based recovery desktop environment with full browsing capabilities." />
   <!-- Permissions-Policy: request all APIs the host browser supports -->
   <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*, geolocation=*, display-capture=*, fullscreen=*, payment=*, midi=*, clipboard-read=*, clipboard-write=*, gyroscope=*, accelerometer=*, magnetometer=*, usb=*, serial=*, bluetooth=*, xr-spatial-tracking=*" />
   <!-- Preconnect for faster Google Fonts load -->
@@ -33,10 +33,10 @@
 
   <!-- Bootloader -->
   <div id="bootloader-screen" class="hidden">
-    <div class="bootloader-header">Nightmare OS Boot Manager v2.06</div>
+    <div class="bootloader-header">Windows PE Boot Manager v2.06</div>
     <div class="bootloader-menu">
-      <div class="bootloader-entry selected" data-entry="0">Nightmare OS 2.0 (standard mode)</div>
-      <div class="bootloader-entry" data-entry="1">Nightmare OS 2.0 (safe mode)</div>
+      <div class="bootloader-entry selected" data-entry="0">Windows PE 2.0 (standard shell)</div>
+      <div class="bootloader-entry" data-entry="1">Windows PE 2.0 (recovery mode)</div>
       <div class="bootloader-entry" data-entry="2">Memory diagnostic tool</div>
     </div>
     <div class="bootloader-help">Use ↑ and ↓ to select, Enter to boot. Auto-boot in <span id="bootloader-timer">5</span>s</div>
@@ -46,13 +46,13 @@
   <div id="boot-screen" class="hidden">
     <div class="boot-logo">
       <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="40" cy="40" r="38" stroke="#8b00ff" stroke-width="3"/>
-        <path d="M40 14 L54 34 H26 Z" fill="#8b00ff"/>
-        <path d="M40 66 L26 46 H54 Z" fill="#8b00ff" opacity="0.6"/>
-        <circle cx="40" cy="40" r="8" fill="#8b00ff"/>
+        <circle cx="40" cy="40" r="38" stroke="#4f8ef7" stroke-width="3"/>
+        <path d="M40 14 L54 34 H26 Z" fill="#4f8ef7"/>
+        <path d="M40 66 L26 46 H54 Z" fill="#4f8ef7" opacity="0.6"/>
+        <circle cx="40" cy="40" r="8" fill="#4f8ef7"/>
       </svg>
-      <h1 style="font-family: 'Nosifer', cursive; color: #8b00ff;">Nightmare OS</h1>
-      <p>Web Desktop Environment</p>
+      <h1>Windows PE</h1>
+      <p>Web Recovery Environment</p>
     </div>
     <div class="boot-progress-wrap">
       <div class="boot-progress-bar" id="boot-bar"></div>
@@ -226,10 +226,10 @@
       <button class="taskbar-start" id="start-btn" aria-haspopup="true" aria-expanded="false">
         <span class="start-icon">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" stroke="#8b00ff" stroke-width="1.5"/>
-            <path d="M10 4L13.5 9H6.5Z" fill="#8b00ff"/>
-            <path d="M10 16L6.5 11H13.5Z" fill="#8b00ff" opacity="0.7"/>
-            <circle cx="10" cy="10" r="2.5" fill="#8b00ff"/>
+            <circle cx="10" cy="10" r="9" stroke="#4f8ef7" stroke-width="1.5"/>
+            <path d="M10 4L13.5 9H6.5Z" fill="#4f8ef7"/>
+            <path d="M10 16L6.5 11H13.5Z" fill="#4f8ef7" opacity="0.7"/>
+            <circle cx="10" cy="10" r="2.5" fill="#4f8ef7"/>
           </svg>
         </span>
         <span>Start</span>
@@ -429,11 +429,11 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .catch(function(e) {
-          console.warn('[Nightmare OS] SW registration failed:', e);
+          console.warn('[Windows PE] SW registration failed:', e);
           /* Show notification once the desktop is ready */
           window.addEventListener('nightmareos-ready', function() {
             if (window.showNotification) {
-              showNotification('Nightmare OS', '⚠️ Proxy & offline features unavailable — service worker could not be registered.');
+              showNotification('Windows PE', '⚠️ Proxy & offline features unavailable — service worker could not be registered.');
             }
           });
         });
