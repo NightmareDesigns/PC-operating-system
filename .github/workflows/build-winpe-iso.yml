@@ -59,6 +59,8 @@ jobs:
       ADK_PE_URL: "https://go.microsoft.com/fwlink/?linkid=2289981"
       # Bump the version suffix to force a fresh ADK download.
       ADK_CACHE_KEY: "windows-adk-win11-layout-v2"
+      # Opt into Node.js 24 for all JavaScript actions (avoids Node.js 20 deprecation warnings).
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # ── 1. Checkout ───────────────────────────────────────────────────────
@@ -88,14 +90,50 @@ jobs:
       # and install step, saving 20-30 min and avoiding the version-conflict
       # exit code 1001 that the older setup EXEs return when a newer ADK is
       # already installed.
+      #
+      # Detection order:
+      #   1. Registry key (most reliable – works even if paths differ across
+      #      ADK versions or runner image updates).
+      #   2. Direct path check as fallback.
       - name: Check if Windows ADK is already installed
         id: adk-check
         shell: pwsh
         run: |
-          $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-          $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-          $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-          if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+          $adkInstalled = $false
+
+          # ── Primary: registry-based detection ──────────────────────────────
+          $regPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots"
+          if (Test-Path $regPath) {
+            $kitsRoot10 = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+            if ($kitsRoot10) {
+              $deployTools = Join-Path $kitsRoot10 "Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
+              $winPeRoot   = Join-Path $kitsRoot10 "Assessment and Deployment Kit\Windows Preinstallation Environment"
+              Write-Host "Registry KitsRoot10      : $kitsRoot10"
+              Write-Host "DeployTools path exists  : $(Test-Path $deployTools)  ($deployTools)"
+              Write-Host "WinPE root path exists   : $(Test-Path $winPeRoot)  ($winPeRoot)"
+              if ((Test-Path $deployTools) -and (Test-Path $winPeRoot)) {
+                $adkInstalled = $true
+              }
+            } else {
+              Write-Host "Registry key present but KitsRoot10 value not found."
+            }
+          } else {
+            Write-Host "Registry key $regPath not found."
+          }
+
+          # ── Fallback: direct path check ─────────────────────────────────────
+          if (-not $adkInstalled) {
+            $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
+            $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
+            $winPeRoot   = "$adkRoot\Windows Preinstallation Environment"
+            Write-Host "Fallback DeployTools exists: $(Test-Path $deployTools)  ($deployTools)"
+            Write-Host "Fallback WinPE root exists : $(Test-Path $winPeRoot)  ($winPeRoot)"
+            if ((Test-Path $deployTools) -and (Test-Path $winPeRoot)) {
+              $adkInstalled = $true
+            }
+          }
+
+          if ($adkInstalled) {
             Write-Host "Windows ADK Deployment Tools + WinPE are already installed on this runner – skipping download/install."
             echo "installed=true" >> $env:GITHUB_OUTPUT
           } else {
@@ -105,6 +143,7 @@ jobs:
 
       # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
       - name: Download Windows ADK offline layouts
+        id: adk-download
         if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
@@ -120,6 +159,13 @@ jobs:
           Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
           $proc = Start-Process -Wait -PassThru $adkSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
+          # Exit 1001 = a newer version of ADK is already installed; treat as pre-installed.
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "::warning::ADK setup returned exit 1001 – a newer version is already installed. Skipping download/install steps."
+              echo "adk_preinstalled=true" >> $env:GITHUB_OUTPUT
+              Write-Host "::endgroup::"
+              exit 0
+          }
           if ($proc.ExitCode -ne 0) {
               Write-Error "ADK layout download failed (exit $($proc.ExitCode))"
               exit 1
@@ -138,6 +184,13 @@ jobs:
           Write-Host "Downloading Windows PE layout (~1.5 GB)..."
           $proc = Start-Process -Wait -PassThru $peSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
+          # Exit 1001 = a newer version of WinPE add-on is already installed; treat as pre-installed.
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "::warning::WinPE setup returned exit 1001 – a newer version is already installed. Skipping download/install steps."
+              echo "adk_preinstalled=true" >> $env:GITHUB_OUTPUT
+              Write-Host "::endgroup::"
+              exit 0
+          }
           if ($proc.ExitCode -ne 0) {
               Write-Error "WinPE layout download failed (exit $($proc.ExitCode))"
               exit 1
@@ -150,7 +203,7 @@ jobs:
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.adk-download.outputs.adk_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -174,7 +227,7 @@ jobs:
 
       # ── 6. Install WinPE Add-on ────────────────────────────────────────────
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.adk-download.outputs.adk_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
