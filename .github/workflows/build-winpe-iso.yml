@@ -92,14 +92,46 @@ jobs:
         id: adk-check
         shell: pwsh
         run: |
-          $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-          $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-          $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-          if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-            Write-Host "Windows ADK Deployment Tools + WinPE are already installed on this runner – skipping download/install."
+          # First, check registry for ADK installation (most reliable method)
+          $regPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots"
+          $adkInstalled = $false
+
+          try {
+            if (Test-Path $regPath) {
+              $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+              if ($kitsRoot) {
+                $adkRoot = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
+                $winPeEnv = Join-Path $adkRoot "Windows Preinstallation Environment"
+
+                if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+                  Write-Host "✓ Windows ADK found via registry at: $adkRoot"
+                  Write-Host "  - Deployment Tools: $deployTools"
+                  Write-Host "  - WinPE Environment: $winPeEnv"
+                  $adkInstalled = $true
+                }
+              }
+            }
+          } catch {
+            Write-Host "Registry check failed (non-fatal): $_"
+          }
+
+          # Fallback: check default installation path
+          if (-not $adkInstalled) {
+            $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
+            $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
+            $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
+            if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+              Write-Host "✓ Windows ADK found at default path: $adkRoot"
+              $adkInstalled = $true
+            }
+          }
+
+          if ($adkInstalled) {
+            Write-Host "→ Skipping download/install steps (ADK already present)"
             echo "installed=true" >> $env:GITHUB_OUTPUT
           } else {
-            Write-Host "Windows ADK not found on this runner – will download and install."
+            Write-Host "→ ADK not found – will download and install"
             echo "installed=false" >> $env:GITHUB_OUTPUT
           }
 
