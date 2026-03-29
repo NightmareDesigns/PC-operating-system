@@ -234,13 +234,26 @@ The Windows PE edition combines:
 ✅ Full desktop environment with all features
 ✅ Compatible with UEFI and Legacy BIOS
 
-### Quick Start
+### Quick Start – WinPE (lightweight, no install required)
 
 1. **Install Windows ADK** (Windows Assessment and Deployment Kit)
 2. **Run build script**: `.\winpe\Build-NightmareOS-PE.ps1`
 3. **Create bootable USB**: `.\winpe\Create-Bootable-USB.ps1 -DriveLetter E:`
 4. **Or create ISO**: `.\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true`
 5. **Boot from USB or ISO** on any compatible PC
+
+### Quick Start – Full Windows 11 ISO (installs Nightmare OS on the machine)
+
+1. **Download a Windows 11 ISO** from [microsoft.com](https://www.microsoft.com/en-us/software-download/windows11)
+2. **Run the builder**:
+   ```powershell
+   .\winpe\Build-Win11-ISO.ps1 -SourceISO "D:\Win11.iso"
+   # Output: C:\NightmareOS-Win11\NightmareOS-Win11.iso
+   ```
+3. **Use the ISO** with VirtualBox / VMware / Hyper-V, or burn to DVD / write to USB with [Rufus](https://rufus.ie)
+4. Windows installs automatically; **Nightmare OS opens on first login**
+
+> See **[BUILD_WINPE.md – Building a Full Windows 11 ISO](BUILD_WINPE.md#building-a-full-windows-11-iso)** for full details.
 
 ### Documentation
 

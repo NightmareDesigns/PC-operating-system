@@ -340,3 +340,86 @@ For Nightmare OS issues:
 - See main README.md
 - Check browser console for errors
 - Verify all files copied correctly
+
+---
+
+## Building a Full Windows 11 ISO
+
+In addition to the lightweight WinPE image, you can build a **full Windows 11 installation ISO** that pre-installs Nightmare OS and auto-launches it on first login.
+
+### Requirements
+
+- A genuine Windows 11 ISO (e.g. downloaded from the [Microsoft website](https://www.microsoft.com/en-us/software-download/windows11))
+- Windows ADK (Deployment Tools) – same as the WinPE build
+- ~20 GB free disk space
+- Administrator privileges
+
+### Quick Start
+
+```powershell
+# Customize Win 11 Pro (default) and create the ISO
+.\winpe\Build-Win11-ISO.ps1 -SourceISO "D:\Win11.iso"
+
+# Output: C:\NightmareOS-Win11\NightmareOS-Win11.iso
+```
+
+### All Parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `-SourceISO` | *(required)* | Path to the original Windows 11 ISO |
+| `-OutputPath` | `C:\NightmareOS-Win11\NightmareOS-Win11.iso` | Where to write the new ISO |
+| `-WorkDir` | `C:\NightmareOS-Win11` | Scratch directory (~20 GB needed) |
+| `-Edition` | `Windows 11 Pro` | Windows edition to customize (use `list` to enumerate) |
+| `-InjectNightmareOS` | `$true` | Copy Nightmare OS files into the Windows image |
+| `-CreateUnattend` | `$true` | Embed an `autounattend.xml` for automated setup |
+| `-Architecture` | `amd64` | Processor architecture (`amd64`, `x86`, `arm64`) |
+
+### List Available Editions
+
+```powershell
+.\winpe\Build-Win11-ISO.ps1 -SourceISO "D:\Win11.iso" -Edition list
+```
+
+### Target a Different Edition
+
+```powershell
+.\winpe\Build-Win11-ISO.ps1 -SourceISO "D:\Win11.iso" -Edition "Windows 11 Home"
+```
+
+### Rebuild Without Customization
+
+```powershell
+.\winpe\Build-Win11-ISO.ps1 -SourceISO "D:\Win11.iso" `
+    -InjectNightmareOS $false -CreateUnattend $false
+```
+
+### What the Script Does
+
+1. Validates the source ISO and locates `oscdimg` from Windows ADK
+2. Mounts and extracts the source ISO to a working directory
+3. Converts `install.esd` → `install.wim` if necessary (some ISOs use ESD)
+4. Mounts the selected Windows image with DISM
+5. **Injects Nightmare OS files** to `C:\Windows\Web\NightmareOS\` inside the image, and adds a Public Desktop shortcut + Edge launcher script
+6. **Embeds `autounattend.xml`** in the ISO root so Windows Setup runs unattended (auto-partitioning, auto-account creation, auto-launch of Nightmare OS on first login)
+7. Unmounts and saves the image
+8. Rebuilds a dual-boot (BIOS + UEFI) ISO with `oscdimg`
+
+### Using the Built ISO
+
+**Virtual machine (recommended for testing):**
+- **VirtualBox**: New VM → attach ISO as optical drive → boot
+- **VMware Workstation**: New VM wizard → use ISO file
+- **Hyper-V**: New VM → attach ISO in settings → start
+
+**Physical machine:**
+- Burn to DVD: right-click ISO → *Burn disc image*
+- Write to USB: use [Rufus](https://rufus.ie) – select ISO, choose GPT/UEFI, write
+
+After installation, Nightmare OS opens automatically in Microsoft Edge.  
+Files are located at `C:\Windows\Web\NightmareOS\`.  
+To launch manually, run `C:\Windows\Web\NightmareOS\Launch-NightmareOS.bat`.
+
+### Licence Note
+
+The embedded KMS client key in the generated `autounattend.xml` is a publicly-documented generic key that activates via an on-premises KMS server.  Replace it with your retail or volume license key before distribution.
