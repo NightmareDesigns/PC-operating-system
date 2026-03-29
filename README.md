@@ -234,7 +234,19 @@ The Windows PE edition combines:
 ✅ Full desktop environment with all features
 ✅ Compatible with UEFI and Legacy BIOS
 
-### Quick Start – WinPE (lightweight, no install required)
+### Quick Start – Build WinPE ISO in the Cloud (no PC required!)
+
+Don't have a Windows PC?  GitHub Actions can build the ISO for you automatically:
+
+1. Go to the **Actions** tab of this repository.
+2. Click **"Build Nightmare OS WinPE ISO"** in the left sidebar.
+3. Click **"Run workflow"** → **"Run workflow"**.
+4. Wait ~20-40 minutes for the job to complete.
+5. Click the finished run → scroll to **Artifacts** → download **`NightmareOS-PE-ISO-<N>`**.
+6. Extract the ZIP to get `NightmareOS-PE.iso`.
+7. Boot in a VM (VirtualBox / VMware / Hyper-V) or write to USB with [Rufus](https://rufus.ie).
+
+### Quick Start – WinPE (local build, requires Windows PC)
 
 1. **Install Windows ADK** (Windows Assessment and Deployment Kit)
 2. **Run build script**: `.\winpe\Build-NightmareOS-PE.ps1`
