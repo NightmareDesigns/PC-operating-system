@@ -1,0 +1,287 @@
+name: Build Nightmare OS WinPE ISO
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ──────────────────────────────────────────────────────────────────────────────
+on:
+  # ① Manual trigger – run this whenever you want a fresh ISO
+  #    Go to: Actions → "Build Nightmare OS WinPE ISO" → Run workflow
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: 'Target architecture'
+        required: false
+        default: 'amd64'
+        type: choice
+        options:
+          - amd64
+          - x86
+      include_python:
+        description: 'Reserve a Python placeholder dir inside the PE image'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+  # ② Automatic build when a version tag is pushed (e.g. git tag v1.0 && git push --tags)
+  #    The ISO is attached to the GitHub Release that is created for the tag.
+  push:
+    tags:
+      - 'v*'
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Permissions
+# ──────────────────────────────────────────────────────────────────────────────
+permissions:
+  contents: write   # needed to upload assets to a GitHub Release
+  actions:  read
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+  build-winpe-iso:
+    name: Build WinPE ISO (${{ github.event.inputs.architecture || 'amd64' }})
+    runs-on: windows-latest
+    # ADK download + install takes ~20-30 min on a cache miss;
+    # ~5-10 min on a cache hit.  Build itself is ~5 min.
+    timeout-minutes: 90
+
+    env:
+      WORK_DIR:         C:\WinPE_NightmareOS
+      ADK_LAYOUT_DIR:   C:\ADK-Layout
+      ADK_PE_LAYOUT_DIR: C:\ADK-PE-Layout
+      # Official redirect URLs for the latest Windows 11 ADK and WinPE add-on.
+      # If Microsoft changes the links, update these and bump ADK_CACHE_KEY.
+      ADK_URL:    "https://go.microsoft.com/fwlink/?linkid=2243390"
+      ADK_PE_URL: "https://go.microsoft.com/fwlink/?linkid=2243391"
+      # Bump the version suffix (v1 → v2) to force a fresh ADK download.
+      ADK_CACHE_KEY: "windows-adk-win11-layout-v1"
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Restore ADK offline-layout cache ──────────────────────────────
+      #
+      # The layout directories hold all installer packages for:
+      #   • Windows ADK  → OptionId.DeploymentTools (~700 MB)
+      #   • WinPE Add-on → OptionId.WindowsPreinstallationEnvironment (~1.5 GB)
+      #
+      # Caching them saves 20-30 min on every non-first run.
+      - name: Restore ADK layout cache
+        id: cache-adk
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ADK_LAYOUT_DIR }}
+            ${{ env.ADK_PE_LAYOUT_DIR }}
+          key: ${{ env.ADK_CACHE_KEY }}
+
+      # ── 3. Download layouts (cache miss only) ─────────────────────────────
+      - name: Download Windows ADK offline layouts
+        if: steps.cache-adk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          New-Item -ItemType Directory -Path $env:ADK_LAYOUT_DIR    -Force | Out-Null
+          New-Item -ItemType Directory -Path $env:ADK_PE_LAYOUT_DIR -Force | Out-Null
+
+          # ---- Windows ADK (Deployment Tools) ----
+          Write-Host "::group::Download Windows ADK layout"
+          $adkSetup = "$env:TEMP\adksetup.exe"
+          Write-Host "Fetching ADK setup (~5 MB)..."
+          Invoke-WebRequest -Uri $env:ADK_URL -OutFile $adkSetup -UseBasicParsing
+          Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
+          $proc = Start-Process -Wait -PassThru $adkSetup `
+              -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
+          if ($proc.ExitCode -ne 0) {
+              Write-Error "ADK layout download failed (exit $($proc.ExitCode))"
+              exit 1
+          }
+          # Ensure the bootstrapper is in the layout dir for later offline install
+          if (-not (Test-Path "$env:ADK_LAYOUT_DIR\adksetup.exe")) {
+              Copy-Item $adkSetup "$env:ADK_LAYOUT_DIR\adksetup.exe" -Force
+          }
+          Write-Host "::endgroup::"
+
+          # ---- Windows PE Add-on ----
+          Write-Host "::group::Download Windows PE Add-on layout"
+          $peSetup = "$env:TEMP\adkwinpesetup.exe"
+          Write-Host "Fetching WinPE add-on setup (~5 MB)..."
+          Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $peSetup -UseBasicParsing
+          Write-Host "Downloading Windows PE layout (~1.5 GB)..."
+          $proc = Start-Process -Wait -PassThru $peSetup `
+              -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
+          if ($proc.ExitCode -ne 0) {
+              Write-Error "WinPE layout download failed (exit $($proc.ExitCode))"
+              exit 1
+          }
+          if (-not (Test-Path "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe")) {
+              Copy-Item $peSetup "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe" -Force
+          }
+          Write-Host "::endgroup::"
+          Write-Host "Both ADK layouts ready."
+
+      # ── 4. Install ADK Deployment Tools ───────────────────────────────────
+      - name: Install Windows ADK – Deployment Tools
+        shell: pwsh
+        run: |
+          Write-Host "::group::Install ADK Deployment Tools"
+          $setup = "$env:ADK_LAYOUT_DIR\adksetup.exe"
+          if (-not (Test-Path $setup)) {
+              Write-Error "adksetup.exe not found in $env:ADK_LAYOUT_DIR – cache may be incomplete."
+              exit 1
+          }
+          Write-Host "Running: $setup"
+          $logFile = "C:\adk-deploy.log"
+          $proc = Start-Process -Wait -PassThru $setup `
+              -ArgumentList "/features OptionId.DeploymentTools /quiet /norestart /log `"$logFile`""
+          # 3010 = success, reboot pending (safe to ignore in CI)
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+              Write-Error "ADK Deployment Tools install failed (exit $($proc.ExitCode)). Last 50 log lines:"
+              Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
+              exit 1
+          }
+          Write-Host "ADK Deployment Tools installed successfully."
+          Write-Host "::endgroup::"
+
+      # ── 5. Install WinPE Add-on ────────────────────────────────────────────
+      - name: Install Windows PE Add-on
+        shell: pwsh
+        run: |
+          Write-Host "::group::Install Windows PE Add-on"
+          $setup = "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe"
+          if (-not (Test-Path $setup)) {
+              Write-Error "adkwinpesetup.exe not found in $env:ADK_PE_LAYOUT_DIR – cache may be incomplete."
+              exit 1
+          }
+          Write-Host "Running: $setup"
+          $logFile = "C:\adk-winpe.log"
+          $proc = Start-Process -Wait -PassThru $setup `
+              -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /log `"$logFile`""
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+              Write-Error "WinPE Add-on install failed (exit $($proc.ExitCode)). Last 50 log lines:"
+              Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
+              exit 1
+          }
+          Write-Host "Windows PE Add-on installed successfully."
+          Write-Host "::endgroup::"
+
+      # ── 6. Build Nightmare OS WinPE ISO ───────────────────────────────────
+      - name: Build Nightmare OS WinPE ISO
+        shell: pwsh
+        run: |
+          $arch      = if ("${{ github.event.inputs.architecture }}"   -ne '') { "${{ github.event.inputs.architecture }}"   } else { 'amd64' }
+          # [bool]::Parse() requires 'True'/'False'; normalise the input string to title-case.
+          $incPython = if ("${{ github.event.inputs.include_python }}" -ne '') { [bool]::Parse(("${{ github.event.inputs.include_python }}").Substring(0,1).ToUpper() + ("${{ github.event.inputs.include_python }}").Substring(1).ToLower()) } else { $false }
+
+          Write-Host "Architecture  : $arch"
+          Write-Host "IncludePython : $incPython"
+          Write-Host "WorkDir       : $env:WORK_DIR"
+
+          .\winpe\Build-NightmareOS-PE.ps1 `
+              -Architecture  $arch `
+              -CreateISO     $true `
+              -WorkDir       $env:WORK_DIR `
+              -IncludePython $incPython
+
+      # ── 7. Verify ISO ──────────────────────────────────────────────────────
+      - name: Verify ISO and collect metadata
+        id: iso-meta
+        shell: pwsh
+        run: |
+          $isoPath = "$env:WORK_DIR\NightmareOS-PE.iso"
+          if (-not (Test-Path $isoPath)) {
+              Write-Error "ISO not found at $isoPath – build step may have failed."
+              exit 1
+          }
+          $iso    = Get-Item $isoPath
+          $sizeMB = [math]::Round($iso.Length / 1MB, 1)
+          Write-Host "ISO: $($iso.FullName)  ($sizeMB MB)"
+          echo "iso_path=$($iso.FullName)" >> $env:GITHUB_OUTPUT
+          echo "iso_size_mb=$sizeMB"       >> $env:GITHUB_OUTPUT
+
+      # ── 8. Upload ISO as workflow artifact ───────────────────────────────
+      #
+      # After the run, go to:
+      #   Actions → this run → Artifacts (bottom of the page)
+      # Click "NightmareOS-PE-ISO-<run_number>" to download a ZIP.
+      # Extract the ZIP to get NightmareOS-PE.iso  (~300-500 MB).
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NightmareOS-PE-ISO-${{ github.run_number }}
+          path: ${{ steps.iso-meta.outputs.iso_path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # ── 9. Attach ISO to GitHub Release (tag builds only) ─────────────────
+      - name: Attach ISO to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.iso-meta.outputs.iso_path }}
+          name: "Nightmare OS ${{ github.ref_name }}"
+          body: |
+            ## Nightmare OS WinPE – ${{ github.ref_name }}
+
+            Bootable ISO (dual BIOS + UEFI) built automatically from this commit.
+
+            **Size**: ${{ steps.iso-meta.outputs.iso_size_mb }} MB
+
+            ### Usage
+            | Method | Instructions |
+            |---|---|
+            | **VirtualBox / VMware / Hyper-V** | Attach ISO as optical drive → boot |
+            | **USB (Rufus)** | Open [Rufus](https://rufus.ie), select ISO, write to USB |
+            | **DVD** | Right-click ISO → *Burn disc image* |
+
+      # ── 10. Job summary ────────────────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        shell: pwsh
+        run: |
+          $sizeMB   = "${{ steps.iso-meta.outputs.iso_size_mb }}"
+          $arch     = if ("${{ github.event.inputs.architecture }}" -ne '') { "${{ github.event.inputs.architecture }}" } else { 'amd64' }
+          $run      = "${{ github.run_number }}"
+          # Use the outcome of the iso-meta step as the source of truth for success.
+          $ok       = "${{ steps.iso-meta.outcome }}" -eq 'success'
+
+          $icon   = if ($ok) { '✅' } else { '❌' }
+          $status = if ($ok) { 'Build succeeded' } else { 'Build failed – see step logs for details' }
+
+          $md = @"
+          ## ${icon} Nightmare OS WinPE ISO – ${status}
+
+          | Property | Value |
+          |---|---|
+          | Architecture | ``${arch}`` |
+          | ISO size | ${sizeMB} MB |
+          | Artifact | ``NightmareOS-PE-ISO-${run}`` |
+          | Retention | 30 days |
+
+          ### How to download the ISO
+
+          1. Scroll to the **Artifacts** section at the bottom of this page.
+          2. Click **``NightmareOS-PE-ISO-${run}``** – a ZIP file downloads.
+          3. Extract the ZIP to get ``NightmareOS-PE.iso``.
+
+          ### How to use the ISO
+
+          | Method | Steps |
+          |---|---|
+          | **VirtualBox** | New VM → Settings → Storage → attach ISO as optical drive → Start |
+          | **VMware** | New VM wizard → attach ISO → Power On |
+          | **Hyper-V** | New VM → DVD settings → attach ISO → Start |
+          | **USB (Rufus)** | [rufus.ie](https://rufus.ie) – select ISO, GPT/UEFI, click START |
+          | **DVD** | Right-click ISO → *Burn disc image* |
+
+          ### To build again
+
+          Go to **Actions → Build Nightmare OS WinPE ISO → Run workflow**.
+          "@
+          $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8

@@ -2,6 +2,32 @@
 
 This guide explains how to create a bootable Windows 11 PE (Preinstallation Environment) USB drive with the Nightmare OS web desktop environment.
 
+## Build in the Cloud (No PC Required)
+
+A GitHub Actions workflow is included so you can build the WinPE ISO entirely in the cloud — no Windows PC needed.
+
+### Steps
+
+1. Open the **Actions** tab of this repository on GitHub.
+2. Select **"Build Nightmare OS WinPE ISO"** in the left sidebar.
+3. Click **"Run workflow"** (top-right) → keep defaults → click **"Run workflow"**.
+4. The job installs Windows ADK on a `windows-latest` runner, builds the ISO, and uploads it as an artifact.
+5. When the run turns green (✅), click it and scroll down to **Artifacts**.
+6. Click **`NightmareOS-PE-ISO-<N>`** to download a ZIP.
+7. Extract the ZIP to get `NightmareOS-PE.iso` (~300–500 MB).
+
+### ADK Cache
+
+The first run downloads ~2.3 GB of ADK packages (takes ~25–30 min).  Subsequent runs restore the packages from the GitHub Actions cache and complete in ~20 min.
+
+To force a fresh ADK download (e.g. after a Microsoft ADK update), bump the `ADK_CACHE_KEY` value in `.github/workflows/build-winpe-iso.yml`.
+
+### Automatic Release Builds
+
+When you push a version tag (e.g. `git tag v1.0 && git push --tags`), the workflow runs automatically and attaches the ISO to the GitHub Release.
+
+---
+
 ## Prerequisites
 
 ### Required Software
