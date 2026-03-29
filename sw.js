@@ -18,7 +18,7 @@
 
 'use strict';
 
-const CACHE_NAME  = 'nightmareos-v5';
+const CACHE_NAME  = 'nightmareos-v6';
 const PROXY_PATH  = '/nmproxy';
 
 const APP_SHELL = [
