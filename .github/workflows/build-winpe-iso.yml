@@ -105,6 +105,7 @@ jobs:
 
       # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
       - name: Download Windows ADK offline layouts
+        id: adk-download
         if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
@@ -120,9 +121,15 @@ jobs:
           Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
           $proc = Start-Process -Wait -PassThru $adkSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
-          if ($proc.ExitCode -ne 0) {
+          # Exit code 1001 = newer version already installed (can happen on some runners)
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 1001) {
               Write-Error "ADK layout download failed (exit $($proc.ExitCode))"
               exit 1
+          }
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "::warning::ADK setup returned exit 1001 (newer version may be installed). Skipping download/install steps."
+              echo "exit_1001=true" >> $env:GITHUB_OUTPUT
+              exit 0
           }
           # Ensure the bootstrapper is in the layout dir for later offline install
           if (-not (Test-Path "$env:ADK_LAYOUT_DIR\adksetup.exe")) {
@@ -138,9 +145,14 @@ jobs:
           Write-Host "Downloading Windows PE layout (~1.5 GB)..."
           $proc = Start-Process -Wait -PassThru $peSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
-          if ($proc.ExitCode -ne 0) {
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 1001) {
               Write-Error "WinPE layout download failed (exit $($proc.ExitCode))"
               exit 1
+          }
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "::warning::WinPE setup returned exit 1001 (newer version may be installed). Skipping download/install steps."
+              echo "exit_1001=true" >> $env:GITHUB_OUTPUT
+              exit 0
           }
           if (-not (Test-Path "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe")) {
               Copy-Item $peSetup "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe" -Force
@@ -150,7 +162,7 @@ jobs:
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.adk-download.outputs.exit_1001 != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -174,7 +186,7 @@ jobs:
 
       # ── 6. Install WinPE Add-on ────────────────────────────────────────────
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.adk-download.outputs.exit_1001 != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
