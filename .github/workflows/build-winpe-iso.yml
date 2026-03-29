@@ -53,12 +53,12 @@ jobs:
       WORK_DIR:         C:\WinPE_NightmareOS
       ADK_LAYOUT_DIR:   C:\ADK-Layout
       ADK_PE_LAYOUT_DIR: C:\ADK-PE-Layout
-      # Official redirect URLs for the latest Windows 11 ADK and WinPE add-on.
+      # Official redirect URLs for Windows 11 24H2 ADK and WinPE add-on.
       # If Microsoft changes the links, update these and bump ADK_CACHE_KEY.
-      ADK_URL:    "https://go.microsoft.com/fwlink/?linkid=2243390"
-      ADK_PE_URL: "https://go.microsoft.com/fwlink/?linkid=2243391"
-      # Bump the version suffix (v1 → v2) to force a fresh ADK download.
-      ADK_CACHE_KEY: "windows-adk-win11-layout-v1"
+      ADK_URL:    "https://go.microsoft.com/fwlink/?linkid=2289980"
+      ADK_PE_URL: "https://go.microsoft.com/fwlink/?linkid=2289981"
+      # Bump the version suffix to force a fresh ADK download.
+      ADK_CACHE_KEY: "windows-adk-win11-layout-v2"
 
     steps:
       # ── 1. Checkout ───────────────────────────────────────────────────────
@@ -81,9 +81,31 @@ jobs:
             ${{ env.ADK_PE_LAYOUT_DIR }}
           key: ${{ env.ADK_CACHE_KEY }}
 
-      # ── 3. Download layouts (cache miss only) ─────────────────────────────
+      # ── 3. Detect if ADK is already on this runner ───────────────────────────
+      #
+      # windows-latest (Windows Server 2025) ships with a recent ADK build.
+      # If the required components are already present we skip every download
+      # and install step, saving 20-30 min and avoiding the version-conflict
+      # exit code 1001 that the older setup EXEs return when a newer ADK is
+      # already installed.
+      - name: Check if Windows ADK is already installed
+        id: adk-check
+        shell: pwsh
+        run: |
+          $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
+          $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
+          $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
+          if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+            Write-Host "Windows ADK Deployment Tools + WinPE are already installed on this runner – skipping download/install."
+            echo "installed=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "Windows ADK not found on this runner – will download and install."
+            echo "installed=false" >> $env:GITHUB_OUTPUT
+          }
+
+      # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
       - name: Download Windows ADK offline layouts
-        if: steps.cache-adk.outputs.cache-hit != 'true'
+        if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           $ProgressPreference = 'SilentlyContinue'
@@ -126,8 +148,9 @@ jobs:
           Write-Host "::endgroup::"
           Write-Host "Both ADK layouts ready."
 
-      # ── 4. Install ADK Deployment Tools ───────────────────────────────────
+      # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       - name: Install Windows ADK – Deployment Tools
+        if: steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -149,8 +172,9 @@ jobs:
           Write-Host "ADK Deployment Tools installed successfully."
           Write-Host "::endgroup::"
 
-      # ── 5. Install WinPE Add-on ────────────────────────────────────────────
+      # ── 6. Install WinPE Add-on ────────────────────────────────────────────
       - name: Install Windows PE Add-on
+        if: steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
@@ -171,7 +195,7 @@ jobs:
           Write-Host "Windows PE Add-on installed successfully."
           Write-Host "::endgroup::"
 
-      # ── 6. Build Nightmare OS WinPE ISO ───────────────────────────────────
+      # ── 7. Build Nightmare OS WinPE ISO ───────────────────────────────────
       - name: Build Nightmare OS WinPE ISO
         shell: pwsh
         run: |
@@ -189,7 +213,7 @@ jobs:
               -WorkDir       $env:WORK_DIR `
               -IncludePython $incPython
 
-      # ── 7. Verify ISO ──────────────────────────────────────────────────────
+      # ── 8. Verify ISO ──────────────────────────────────────────────────────
       - name: Verify ISO and collect metadata
         id: iso-meta
         shell: pwsh
@@ -205,7 +229,7 @@ jobs:
           echo "iso_path=$($iso.FullName)" >> $env:GITHUB_OUTPUT
           echo "iso_size_mb=$sizeMB"       >> $env:GITHUB_OUTPUT
 
-      # ── 8. Upload ISO as workflow artifact ───────────────────────────────
+      # ── 9. Upload ISO as workflow artifact ───────────────────────────────
       #
       # After the run, go to:
       #   Actions → this run → Artifacts (bottom of the page)
@@ -219,7 +243,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      # ── 9. Attach ISO to GitHub Release (tag builds only) ─────────────────
+      # ── 10. Attach ISO to GitHub Release (tag builds only) ─────────────────
       - name: Attach ISO to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -240,7 +264,7 @@ jobs:
             | **USB (Rufus)** | Open [Rufus](https://rufus.ie), select ISO, write to USB |
             | **DVD** | Right-click ISO → *Burn disc image* |
 
-      # ── 10. Job summary ────────────────────────────────────────────────────
+      # ── 11. Job summary ────────────────────────────────────────────────────
       - name: Write job summary
         if: always()
         shell: pwsh
