@@ -94,8 +94,38 @@ jobs:
         run: |
           $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
           $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-          $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-          if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+          $winPeRoot   = "$adkRoot\Windows Preinstallation Environment"
+
+          Write-Host "Checking for ADK at: $adkRoot"
+          Write-Host "  Deployment Tools: $deployTools - exists: $(Test-Path $deployTools)"
+          Write-Host "  WinPE root: $winPeRoot - exists: $(Test-Path $winPeRoot)"
+
+          # Check if ADK is installed via registry as a more reliable method
+          $regPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots"
+          $adkInstalled = $false
+
+          if (Test-Path $regPath) {
+            $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+            if ($kitsRoot) {
+              Write-Host "  ADK registry entry found at: $kitsRoot"
+              $regDeployTools = Join-Path $kitsRoot "Assessment and Deployment Kit\Deployment Tools"
+              $regWinPe = Join-Path $kitsRoot "Assessment and Deployment Kit\Windows Preinstallation Environment"
+              if ((Test-Path $regDeployTools) -and (Test-Path $regWinPe)) {
+                $adkInstalled = $true
+                Write-Host "  Verified ADK components exist at registry path"
+              }
+            }
+          }
+
+          # Fallback to direct path check
+          if (-not $adkInstalled) {
+            if ((Test-Path $deployTools) -and (Test-Path $winPeRoot)) {
+              $adkInstalled = $true
+              Write-Host "  Verified ADK components exist at default path"
+            }
+          }
+
+          if ($adkInstalled) {
             Write-Host "Windows ADK Deployment Tools + WinPE are already installed on this runner – skipping download/install."
             echo "installed=true" >> $env:GITHUB_OUTPUT
           } else {
