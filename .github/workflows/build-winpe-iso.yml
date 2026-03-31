@@ -137,12 +137,15 @@ jobs:
 
       # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
       - name: Download Windows ADK offline layouts
+        id: download-adk
         if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           $ProgressPreference = 'SilentlyContinue'
           New-Item -ItemType Directory -Path $env:ADK_LAYOUT_DIR    -Force | Out-Null
           New-Item -ItemType Directory -Path $env:ADK_PE_LAYOUT_DIR -Force | Out-Null
+
+          $adkPreinstalled = $false
 
           # ---- Windows ADK (Deployment Tools) ----
           Write-Host "::group::Download Windows ADK layout"
@@ -152,17 +155,28 @@ jobs:
           Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
           $proc = Start-Process -Wait -PassThru $adkSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
-          if ($proc.ExitCode -ne 0) {
+          if ($proc.ExitCode -eq 1001) {
+              # Exit 1001 means a same or newer version of the ADK Deployment Tools is already
+              # installed on this runner image.  We cannot create a layout for an older version,
+              # but we can use the pre-installed components directly – skip ADK install step.
+              Write-Host "ADK Deployment Tools already installed on runner (exit 1001) – skipping ADK layout."
+              echo "adk_preinstalled=true" >> $env:GITHUB_OUTPUT
+              $adkPreinstalled = $true
+          } elseif ($proc.ExitCode -ne 0) {
               Write-Error "ADK layout download failed (exit $($proc.ExitCode))"
               exit 1
-          }
-          # Ensure the bootstrapper is in the layout dir for later offline install
-          if (-not (Test-Path "$env:ADK_LAYOUT_DIR\adksetup.exe")) {
-              Copy-Item $adkSetup "$env:ADK_LAYOUT_DIR\adksetup.exe" -Force
+          } else {
+              # Ensure the bootstrapper is in the layout dir for later offline install
+              if (-not (Test-Path "$env:ADK_LAYOUT_DIR\adksetup.exe")) {
+                  Copy-Item $adkSetup "$env:ADK_LAYOUT_DIR\adksetup.exe" -Force
+              }
           }
           Write-Host "::endgroup::"
 
           # ---- Windows PE Add-on ----
+          # Always attempt the WinPE layout even if ADK was pre-installed: the WinPE Add-on
+          # is a separate installer and is often absent from runner images even when the ADK
+          # Deployment Tools component is present.
           Write-Host "::group::Download Windows PE Add-on layout"
           $peSetup = "$env:TEMP\adkwinpesetup.exe"
           Write-Host "Fetching WinPE add-on setup (~5 MB)..."
@@ -170,19 +184,23 @@ jobs:
           Write-Host "Downloading Windows PE layout (~1.5 GB)..."
           $proc = Start-Process -Wait -PassThru $peSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
-          if ($proc.ExitCode -ne 0) {
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "WinPE Add-on already installed on runner (exit 1001) – skipping WinPE layout."
+              echo "winpe_preinstalled=true" >> $env:GITHUB_OUTPUT
+          } elseif ($proc.ExitCode -ne 0) {
               Write-Error "WinPE layout download failed (exit $($proc.ExitCode))"
               exit 1
-          }
-          if (-not (Test-Path "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe")) {
-              Copy-Item $peSetup "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe" -Force
+          } else {
+              if (-not (Test-Path "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe")) {
+                  Copy-Item $peSetup "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe" -Force
+              }
           }
           Write-Host "::endgroup::"
-          Write-Host "Both ADK layouts ready."
+          if (-not $adkPreinstalled) { Write-Host "Both ADK layouts ready." }
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.adk_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -196,17 +214,22 @@ jobs:
           $proc = Start-Process -Wait -PassThru $setup `
               -ArgumentList "/features OptionId.DeploymentTools /quiet /norestart /log `"$logFile`""
           # 3010 = success, reboot pending (safe to ignore in CI)
-          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+          # 1001 = same or newer version already installed (treat as success)
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
               Write-Error "ADK Deployment Tools install failed (exit $($proc.ExitCode)). Last 50 log lines:"
               Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
               exit 1
           }
-          Write-Host "ADK Deployment Tools installed successfully."
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "ADK Deployment Tools already installed (exit 1001) – continuing with pre-installed version."
+          } else {
+              Write-Host "ADK Deployment Tools installed successfully."
+          }
           Write-Host "::endgroup::"
 
       # ── 6. Install WinPE Add-on ────────────────────────────────────────────
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.winpe_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
@@ -219,12 +242,18 @@ jobs:
           $logFile = "C:\adk-winpe.log"
           $proc = Start-Process -Wait -PassThru $setup `
               -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /log `"$logFile`""
-          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+          # 3010 = success, reboot pending (safe to ignore in CI)
+          # 1001 = same or newer version already installed (treat as success)
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
               Write-Error "WinPE Add-on install failed (exit $($proc.ExitCode)). Last 50 log lines:"
               Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
               exit 1
           }
-          Write-Host "Windows PE Add-on installed successfully."
+          if ($proc.ExitCode -eq 1001) {
+              Write-Host "WinPE Add-on already installed (exit 1001) – continuing with pre-installed version."
+          } else {
+              Write-Host "Windows PE Add-on installed successfully."
+          }
           Write-Host "::endgroup::"
 
       # ── 7. Build Nightmare OS WinPE ISO ───────────────────────────────────
