@@ -117,7 +117,7 @@ Write-Success "Running with administrator privileges"
 Write-Step "Checking for Windows ADK installation..."
 
 function Find-ADKPath {
-    # 1. Try registry (handles non-default and 64-bit install paths)
+    # ── Source 1: Registry (both WOW6432Node and native hive) ─────────────────
     $regPaths = @(
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
         "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
@@ -129,7 +129,7 @@ function Find-ADKPath {
                 if ($kitsRoot) {
                     $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
                     if (Test-Path $candidate) {
-                        Write-Host "Found ADK via registry at: $candidate"
+                        Write-Host "Found ADK via registry ($regPath): $candidate"
                         return $candidate
                     }
                 }
@@ -138,17 +138,85 @@ function Find-ADKPath {
             Write-Host "Registry check ($regPath) failed (non-fatal): $_"
         }
     }
-    # 2. Fallback: check common filesystem paths (32-bit and 64-bit)
+
+    # ── Source 2: Known filesystem paths (32-bit and 64-bit Program Files) ────
     $candidates = @(
         "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
         "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
     )
     foreach ($p in $candidates) {
         if (Test-Path $p) {
-            Write-Host "Found ADK at: $p"
+            Write-Host "Found ADK at known path: $p"
             return $p
         }
     }
+
+    # ── Source 3: Get-Package (Windows package manager) ───────────────────────
+    try {
+        $pkg = Get-Package -Name "*Windows Assessment and Deployment Kit*" `
+                           -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($pkg) {
+            Write-Host "Get-Package found: $($pkg.Name)"
+            $pkgLoc = Split-Path $pkg.Source -ErrorAction SilentlyContinue
+            foreach ($sub in @("Assessment and Deployment Kit", ".")) {
+                $candidate = if ($sub -eq ".") { $pkgLoc } else { Join-Path $pkgLoc $sub }
+                if ($candidate -and (Test-Path $candidate)) {
+                    Write-Host "Found ADK via Get-Package at: $candidate"
+                    return $candidate
+                }
+            }
+        }
+    } catch {
+        Write-Host "Get-Package check failed (non-fatal): $_"
+    }
+
+    # ── Source 4: winget (Windows Package Manager CLI) ────────────────────────
+    try {
+        $wg = Get-Command winget -ErrorAction SilentlyContinue
+        if ($wg) {
+            $wgOut = & winget list --name "Windows Assessment and Deployment Kit" 2>&1 |
+                     Where-Object { $_ -match "Windows Assessment" }
+            if ($wgOut) {
+                Write-Host "winget reports ADK installed; resolving path via registry..."
+                foreach ($regPath in $regPaths) {
+                    $kitsRoot = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                    if ($kitsRoot) {
+                        $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                        if (Test-Path $candidate) {
+                            Write-Host "Found ADK via winget+registry: $candidate"
+                            return $candidate
+                        }
+                    }
+                }
+            }
+        }
+    } catch {
+        Write-Host "winget check failed (non-fatal): $_"
+    }
+
+    # ── Source 5: Filesystem search for copype.cmd ────────────────────────────
+    # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
+    # Walking up 3 levels gives the ADK root.
+    try {
+        $searchRoots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits",
+            "${env:ProgramFiles}\Windows Kits",
+            "$env:SystemDrive\Windows Kits"
+        ) | Where-Object { Test-Path $_ }
+        foreach ($sr in $searchRoots) {
+            $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse `
+                                 -Depth 4 -ErrorAction SilentlyContinue |
+                   Select-Object -First 1
+            if ($hit) {
+                $candidate = $hit.DirectoryName | Split-Path | Split-Path
+                Write-Host "Found copype.cmd at: $($hit.FullName) → ADK root: $candidate"
+                if (Test-Path $candidate) { return $candidate }
+            }
+        }
+    } catch {
+        Write-Host "copype.cmd search failed (non-fatal): $_"
+    }
+
     return $null
 }
 

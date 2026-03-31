@@ -95,7 +95,13 @@ jobs:
           $adkInstalled = $false
           $adkFoundPath = ""
 
-          # Check registry (both WOW6432Node and native; handles non-default install paths)
+          function Test-ADKRoot([string]$adkRoot) {
+            $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
+            $winPeEnv    = Join-Path $adkRoot "Windows Preinstallation Environment"
+            return (Test-Path $deployTools) -and (Test-Path $winPeEnv)
+          }
+
+          # ── Source 1: Registry (both WOW6432Node and native hive) ─────────────
           $regPaths = @(
             "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
             "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
@@ -105,14 +111,10 @@ jobs:
               if (Test-Path $regPath) {
                 $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
                 if ($kitsRoot) {
-                  $adkRoot     = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                  $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
-                  $winPeEnv    = Join-Path $adkRoot "Windows Preinstallation Environment"
-                  if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-                    Write-Host "✓ Windows ADK found via registry ($regPath) at: $adkRoot"
-                    $adkInstalled = $true
-                    $adkFoundPath = $adkRoot
-                    break
+                  $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                  if (Test-ADKRoot $candidate) {
+                    Write-Host "✓ ADK found via registry ($regPath): $candidate"
+                    $adkInstalled = $true; $adkFoundPath = $candidate; break
                   }
                 }
               }
@@ -121,22 +123,113 @@ jobs:
             }
           }
 
-          # Fallback: check common filesystem paths (32-bit and 64-bit Program Files)
+          # ── Source 2: Known filesystem paths (32-bit and 64-bit Program Files) ─
           if (-not $adkInstalled) {
             $candidates = @(
               "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
               "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
             )
-            foreach ($adkRoot in $candidates) {
-              $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-              $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-              if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-                Write-Host "✓ Windows ADK found at: $adkRoot"
-                $adkInstalled = $true
-                $adkFoundPath = $adkRoot
-                break
+            foreach ($candidate in $candidates) {
+              if (Test-ADKRoot $candidate) {
+                Write-Host "✓ ADK found at known path: $candidate"
+                $adkInstalled = $true; $adkFoundPath = $candidate; break
               }
             }
+          }
+
+          # ── Source 3: Get-Package (Windows package manager) ───────────────────
+          if (-not $adkInstalled) {
+            try {
+              $pkg = Get-Package -Name "*Windows Assessment and Deployment Kit*" `
+                                 -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($pkg) {
+                Write-Host "Get-Package found: $($pkg.Name) at $($pkg.Source)"
+                # Derive ADK root from package metadata / common sub-paths
+                $pkgLoc = Split-Path $pkg.Source -ErrorAction SilentlyContinue
+                foreach ($sub in @("Assessment and Deployment Kit", ".")) {
+                  $candidate = if ($sub -eq ".") { $pkgLoc } else { Join-Path $pkgLoc $sub }
+                  if ($candidate -and (Test-ADKRoot $candidate)) {
+                    Write-Host "✓ ADK confirmed via Get-Package at: $candidate"
+                    $adkInstalled = $true; $adkFoundPath = $candidate; break
+                  }
+                }
+              }
+            } catch {
+              Write-Host "Get-Package check failed (non-fatal): $_"
+            }
+          }
+
+          # ── Source 4: winget (Windows Package Manager CLI) ────────────────────
+          if (-not $adkInstalled) {
+            try {
+              $wg = Get-Command winget -ErrorAction SilentlyContinue
+              if ($wg) {
+                $wgOut = & winget list --name "Windows Assessment and Deployment Kit" 2>&1 |
+                         Where-Object { $_ -match "Windows Assessment" }
+                if ($wgOut) {
+                  Write-Host "winget reports ADK installed: $wgOut"
+                  # Resolve actual path from registry/filesystem since winget doesn't give path
+                  $kitsRoot = (Get-ItemProperty `
+                    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots" `
+                    -ErrorAction SilentlyContinue).KitsRoot10
+                  if (-not $kitsRoot) {
+                    $kitsRoot = (Get-ItemProperty `
+                      "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots" `
+                      -ErrorAction SilentlyContinue).KitsRoot10
+                  }
+                  if ($kitsRoot) {
+                    $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) {
+                      Write-Host "✓ ADK path resolved via winget+registry: $candidate"
+                      $adkInstalled = $true; $adkFoundPath = $candidate
+                    }
+                  }
+                }
+              }
+            } catch {
+              Write-Host "winget check failed (non-fatal): $_"
+            }
+          }
+
+          # ── Source 5: Filesystem search for copype.cmd ────────────────────────
+          # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
+          # Walking up 3 levels gives the ADK root.
+          if (-not $adkInstalled) {
+            try {
+              $searchRoots = @(
+                "${env:ProgramFiles(x86)}\Windows Kits",
+                "${env:ProgramFiles}\Windows Kits",
+                "$env:SystemDrive\Windows Kits"
+              ) | Where-Object { Test-Path $_ }
+              foreach ($sr in $searchRoots) {
+                $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse `
+                                     -Depth 4 -ErrorAction SilentlyContinue |
+                       Select-Object -First 1
+                if ($hit) {
+                  # <ADK root>\Windows Preinstallation Environment\<arch>\copype.cmd
+                  $candidate = $hit.DirectoryName | Split-Path | Split-Path
+                  Write-Host "Found copype.cmd at: $($hit.FullName) → ADK root: $candidate"
+                  if (Test-ADKRoot $candidate) {
+                    Write-Host "✓ ADK confirmed via copype.cmd search: $candidate"
+                    $adkInstalled = $true; $adkFoundPath = $candidate; break
+                  }
+                }
+              }
+            } catch {
+              Write-Host "copype.cmd search failed (non-fatal): $_"
+            }
+          }
+
+          # ── Diagnostic: show Windows Kits directory tree if still not found ─────
+          if (-not $adkInstalled) {
+            Write-Host "--- Diagnostic: Windows Kits directories ---"
+            @("${env:ProgramFiles(x86)}\Windows Kits", "${env:ProgramFiles}\Windows Kits") |
+              Where-Object { Test-Path $_ } | ForEach-Object {
+                Write-Host "Contents of ${_}:"
+                Get-ChildItem $_ -Directory -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+                  Select-Object -First 40 -ExpandProperty FullName |
+                  ForEach-Object { Write-Host "  $_" }
+              }
           }
 
           if ($adkInstalled) {
@@ -144,7 +237,7 @@ jobs:
             echo "installed=true"  >> $env:GITHUB_OUTPUT
             echo "adk_path=$adkFoundPath" >> $env:GITHUB_OUTPUT
           } else {
-            Write-Host "→ ADK not found – will download and install"
+            Write-Host "→ ADK not found via any source – will download and install"
             echo "installed=false" >> $env:GITHUB_OUTPUT
           }
 
