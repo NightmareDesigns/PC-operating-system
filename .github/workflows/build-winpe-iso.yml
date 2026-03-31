@@ -199,20 +199,39 @@ jobs:
           if (-not $adkPreinstalled) { Write-Host "Both ADK layouts ready." }
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
+      #
+      # Runs whenever adk-check did not confirm a full ADK installation.
+      # If the offline layout is present (cache hit or successful download) it
+      # installs from the layout; otherwise it falls back to a direct online
+      # install using the bootstrapper that was already downloaded to TEMP.
+      # This handles the case where the layout download returns exit 1001
+      # (e.g. Windows SDK sharing the KitsRoot10 registry key confuses the
+      # ADK installer into thinking a full ADK is already present, even though
+      # the Assessment and Deployment Kit directory does not exist).
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.adk_preinstalled != 'true'
+        if: steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
-          $setup = "$env:ADK_LAYOUT_DIR\adksetup.exe"
-          if (-not (Test-Path $setup)) {
-              Write-Error "adksetup.exe not found in $env:ADK_LAYOUT_DIR – cache may be incomplete."
-              exit 1
+          $layoutSetup = "$env:ADK_LAYOUT_DIR\adksetup.exe"
+          $tempSetup   = "$env:TEMP\adksetup.exe"
+
+          if (Test-Path $layoutSetup) {
+              $setup = $layoutSetup
+              Write-Host "Installing from offline layout: $setup"
+          } elseif (Test-Path $tempSetup) {
+              $setup = $tempSetup
+              Write-Host "Layout not available – falling back to online install: $setup"
+          } else {
+              Write-Host "Bootstrapper not found; re-downloading for online install..."
+              Invoke-WebRequest -Uri $env:ADK_URL -OutFile $tempSetup -UseBasicParsing
+              $setup = $tempSetup
           }
-          Write-Host "Running: $setup"
+
           $logFile = "C:\adk-deploy.log"
           $proc = Start-Process -Wait -PassThru $setup `
               -ArgumentList "/features OptionId.DeploymentTools /quiet /norestart /log `"$logFile`""
+          # 0    = success
           # 3010 = success, reboot pending (safe to ignore in CI)
           # 1001 = same or newer version already installed (treat as success)
           if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
@@ -221,27 +240,40 @@ jobs:
               exit 1
           }
           if ($proc.ExitCode -eq 1001) {
-              Write-Host "ADK Deployment Tools already installed (exit 1001) – continuing with pre-installed version."
+              Write-Host "ADK Deployment Tools already installed (exit 1001) – continuing."
           } else {
               Write-Host "ADK Deployment Tools installed successfully."
           }
           Write-Host "::endgroup::"
 
       # ── 6. Install WinPE Add-on ────────────────────────────────────────────
+      #
+      # Same fallback logic as step 5 – uses offline layout when available,
+      # otherwise falls back to a direct online install.
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.winpe_preinstalled != 'true'
+        if: steps.adk-check.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
-          $setup = "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe"
-          if (-not (Test-Path $setup)) {
-              Write-Error "adkwinpesetup.exe not found in $env:ADK_PE_LAYOUT_DIR – cache may be incomplete."
-              exit 1
+          $layoutSetup = "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe"
+          $tempSetup   = "$env:TEMP\adkwinpesetup.exe"
+
+          if (Test-Path $layoutSetup) {
+              $setup = $layoutSetup
+              Write-Host "Installing from offline layout: $setup"
+          } elseif (Test-Path $tempSetup) {
+              $setup = $tempSetup
+              Write-Host "Layout not available – falling back to online install: $setup"
+          } else {
+              Write-Host "Bootstrapper not found; re-downloading for online install..."
+              Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $tempSetup -UseBasicParsing
+              $setup = $tempSetup
           }
-          Write-Host "Running: $setup"
+
           $logFile = "C:\adk-winpe.log"
           $proc = Start-Process -Wait -PassThru $setup `
               -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /log `"$logFile`""
+          # 0    = success
           # 3010 = success, reboot pending (safe to ignore in CI)
           # 1001 = same or newer version already installed (treat as success)
           if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
@@ -250,7 +282,7 @@ jobs:
               exit 1
           }
           if ($proc.ExitCode -eq 1001) {
-              Write-Host "WinPE Add-on already installed (exit 1001) – continuing with pre-installed version."
+              Write-Host "WinPE Add-on already installed (exit 1001) – continuing."
           } else {
               Write-Host "Windows PE Add-on installed successfully."
           }
