@@ -65,6 +65,7 @@ const APP_SHELL = [
   '/js/apps/unitconverter.js',
   '/js/apps/habittracker.js',
   '/js/apps/systeminfo.js',
+  '/js/apps/tiktokstudio.js',
 ];
 
 /* ── Install: cache app shell ──────────────────────────────────────── */
