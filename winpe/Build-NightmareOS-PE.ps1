@@ -115,15 +115,43 @@ Write-Success "Running with administrator privileges"
 
 # Check for Windows ADK
 Write-Step "Checking for Windows ADK installation..."
-$adkPath = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-$winPEPath = "$adkPath\Windows Preinstallation Environment"
 
-if (-not (Test-Path $adkPath)) {
+# Resolve the ADK path: check registry first, then common install paths.
+$adkPath = $null
+try {
+    $regPaths = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+        "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+    )
+    foreach ($regPath in $regPaths) {
+        if (Test-Path $regPath) {
+            $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+            if ($kitsRoot) {
+                $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                if (Test-Path $candidate) { $adkPath = $candidate; break }
+            }
+        }
+    }
+} catch {}
+
+if (-not $adkPath) {
+    $candidates = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { $adkPath = $c; break }
+    }
+}
+
+if (-not $adkPath) {
     Write-Error "Windows ADK not found!"
     Write-Host "Please install Windows ADK for Windows 11 from:"
     Write-Host "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install"
     exit 1
 }
+
+$winPEPath = "$adkPath\Windows Preinstallation Environment"
 
 if (-not (Test-Path $winPEPath)) {
     Write-Error "Windows PE add-on not found!"
