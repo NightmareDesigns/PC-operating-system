@@ -115,16 +115,52 @@ Write-Success "Running with administrator privileges"
 
 # Check for Windows ADK
 Write-Step "Checking for Windows ADK installation..."
-$adkPath = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-$winPEPath = "$adkPath\Windows Preinstallation Environment"
 
-if (-not (Test-Path $adkPath)) {
+function Find-ADKPath {
+    # 1. Try registry (handles non-default and 64-bit install paths)
+    $regPaths = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+        "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+    )
+    foreach ($regPath in $regPaths) {
+        try {
+            if (Test-Path $regPath) {
+                $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                if ($kitsRoot) {
+                    $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) {
+                        Write-Host "Found ADK via registry at: $candidate"
+                        return $candidate
+                    }
+                }
+            }
+        } catch {
+            Write-Host "Registry check ($regPath) failed (non-fatal): $_"
+        }
+    }
+    # 2. Fallback: check common filesystem paths (32-bit and 64-bit)
+    $candidates = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+    )
+    foreach ($p in $candidates) {
+        if (Test-Path $p) {
+            Write-Host "Found ADK at: $p"
+            return $p
+        }
+    }
+    return $null
+}
+
+$adkPath = Find-ADKPath
+if (-not $adkPath) {
     Write-Error "Windows ADK not found!"
     Write-Host "Please install Windows ADK for Windows 11 from:"
     Write-Host "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install"
     exit 1
 }
 
+$winPEPath = "$adkPath\Windows Preinstallation Environment"
 if (-not (Test-Path $winPEPath)) {
     Write-Error "Windows PE add-on not found!"
     Write-Host "Please install Windows PE add-on for Windows ADK"

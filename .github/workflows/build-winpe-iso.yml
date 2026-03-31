@@ -92,44 +92,57 @@ jobs:
         id: adk-check
         shell: pwsh
         run: |
-          # First, check registry for ADK installation (most reliable method)
-          $regPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots"
           $adkInstalled = $false
+          $adkFoundPath = ""
 
-          try {
-            if (Test-Path $regPath) {
-              $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
-              if ($kitsRoot) {
-                $adkRoot = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
-                $winPeEnv = Join-Path $adkRoot "Windows Preinstallation Environment"
-
-                if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-                  Write-Host "✓ Windows ADK found via registry at: $adkRoot"
-                  Write-Host "  - Deployment Tools: $deployTools"
-                  Write-Host "  - WinPE Environment: $winPeEnv"
-                  $adkInstalled = $true
+          # Check registry (both WOW6432Node and native; handles non-default install paths)
+          $regPaths = @(
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+            "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+          )
+          foreach ($regPath in $regPaths) {
+            try {
+              if (Test-Path $regPath) {
+                $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                if ($kitsRoot) {
+                  $adkRoot     = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                  $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
+                  $winPeEnv    = Join-Path $adkRoot "Windows Preinstallation Environment"
+                  if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+                    Write-Host "✓ Windows ADK found via registry ($regPath) at: $adkRoot"
+                    $adkInstalled = $true
+                    $adkFoundPath = $adkRoot
+                    break
+                  }
                 }
               }
+            } catch {
+              Write-Host "Registry check ($regPath) failed (non-fatal): $_"
             }
-          } catch {
-            Write-Host "Registry check failed (non-fatal): $_"
           }
 
-          # Fallback: check default installation path
+          # Fallback: check common filesystem paths (32-bit and 64-bit Program Files)
           if (-not $adkInstalled) {
-            $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-            $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-            $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-            if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-              Write-Host "✓ Windows ADK found at default path: $adkRoot"
-              $adkInstalled = $true
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+              "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+            )
+            foreach ($adkRoot in $candidates) {
+              $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
+              $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
+              if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
+                Write-Host "✓ Windows ADK found at: $adkRoot"
+                $adkInstalled = $true
+                $adkFoundPath = $adkRoot
+                break
+              }
             }
           }
 
           if ($adkInstalled) {
             Write-Host "→ Skipping download/install steps (ADK already present)"
-            echo "installed=true" >> $env:GITHUB_OUTPUT
+            echo "installed=true"  >> $env:GITHUB_OUTPUT
+            echo "adk_path=$adkFoundPath" >> $env:GITHUB_OUTPUT
           } else {
             Write-Host "→ ADK not found – will download and install"
             echo "installed=false" >> $env:GITHUB_OUTPUT
