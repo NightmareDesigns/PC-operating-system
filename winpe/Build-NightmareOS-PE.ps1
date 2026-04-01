@@ -195,26 +195,66 @@ if (Test-Path $WorkDir) {
 Write-Step "Creating Windows PE working directory..."
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\Oscdimg"
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
+$bootWim = "$WorkDir\media\sources\boot.wim"
 
-# Use copype.cmd to create base WinPE structure
-$copypePath = "$winPEPath\$Architecture\copype.cmd"
-if (-not (Test-Path $copypePath)) {
-    Write-Error "copype.cmd not found at: $copypePath"
+# Use copype.cmd to create base WinPE structure. On some ADK installations
+# copype.cmd lives directly under the WinPE root; fall back to the arch folder.
+$copypeCandidates = @(
+    (Join-Path $winPEPath "copype.cmd"),
+    (Join-Path $winPEPath "$Architecture\copype.cmd")
+)
+$copypePath = $copypeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $copypePath) {
+    Write-Error "copype.cmd not found under: $winPEPath"
     exit 1
 }
 
 Write-Host "Running: copype.cmd $Architecture $WorkDir"
-& cmd.exe /c "$copypePath" $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
+& $copypePath $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
+$copypeSucceeded = ($LASTEXITCODE -eq 0) -and (Test-Path $bootWim)
 
-if (-not $?) {
-    Write-Error "Failed to create WinPE working directory"
+if (-not $copypeSucceeded) {
+    Write-Warning "copype.cmd failed or did not produce boot.wim – falling back to manual staging"
+
+    # Manually stage WinPE files (avoids copype.cmd space/arch issues on CI runners).
+    New-Item -ItemType Directory -Path "$WorkDir\media\sources" -Force | Out-Null
+
+    $archRoot    = Join-Path $winPEPath $Architecture
+    $mediaSource = Join-Path $archRoot "Media"
+    if (Test-Path $mediaSource) {
+        Copy-Item -Path (Join-Path $mediaSource "*") -Destination "$WorkDir\media" -Recurse -Force
+    } else {
+        Write-Error "WinPE Media folder not found at: $mediaSource"
+        exit 1
+    }
+
+    $fwFiles = Join-Path $archRoot "fwfiles"
+    if (Test-Path $fwFiles) {
+        Copy-Item -Path $fwFiles -Destination "$WorkDir\fwfiles" -Recurse -Force
+    }
+
+    $wimCandidates = @(
+        (Join-Path $archRoot "winpe.wim"),
+        (Join-Path $archRoot "en-us\winpe.wim")
+    )
+    $winpeWim = $wimCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $winpeWim) {
+        Write-Error "winpe.wim not found under $archRoot (checked default and en-us locations)"
+        exit 1
+    }
+    Copy-Item -Path $winpeWim -Destination $bootWim -Force
+}
+
+if (-not (Test-Path $bootWim)) {
+    Write-Error "Failed to create WinPE working directory (boot.wim missing)"
     exit 1
 }
+
 Write-Success "WinPE working directory created: $WorkDir"
 
 # Mount the WinPE image
 Write-Step "Mounting Windows PE boot image..."
-$bootWim = "$WorkDir\media\sources\boot.wim"
 $mountDir = "$WorkDir\mount"
 
 if (-not (Test-Path $bootWim)) {

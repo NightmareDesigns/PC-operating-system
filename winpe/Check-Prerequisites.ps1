@@ -108,12 +108,17 @@ if (Test-Path $winPEPath) {
 
 # Check 5: copype.cmd
 Write-Check "copype.cmd tool"
-$copypePath = "$winPEPath\amd64\copype.cmd"
-if (Test-Path $copypePath) {
+$copypeCandidates = @(
+    "$winPEPath\copype.cmd",
+    "$winPEPath\amd64\copype.cmd"
+)
+$copypePath = $copypeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($copypePath) {
     Write-Pass
+    Write-Host "  → Found at: $copypePath" -ForegroundColor Gray
 } else {
     Write-Fail
-    Write-Host "  → copype.cmd not found at expected location"
+    Write-Host "  → copype.cmd not found under: $winPEPath"
     $allChecksPassed = $false
 }
 
