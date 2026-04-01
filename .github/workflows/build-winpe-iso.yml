@@ -64,8 +64,11 @@ jobs:
       # Strategy:
       #   a) Try Chocolatey (fast, handles version conflicts).
       #      The windows-adk-winpe Chocolatey package is sometimes marked
-      #      "Likely broken for FOSS users" and may install without copype.cmd.
-      #   b) After both Chocolatey installs, verify copype.cmd is present.
+      #      "Likely broken for FOSS users" — it may install copype.cmd but
+      #      omit the architecture-specific PE files (amd64\winpe.wim, etc.)
+      #      that copype.cmd needs to build a working directory.
+      #   b) After both Chocolatey installs, verify the architecture-specific
+      #      WinPE content directory exists (amd64\ with winpe.wim or WinPE_OCs).
       #   c) If missing, fall back to a direct online install via the official
       #      Microsoft fwlink (adkwinpesetup.exe /quiet online mode).
       - name: Install Windows ADK via Chocolatey
@@ -85,23 +88,42 @@ jobs:
           }
           Write-Host "✓ Windows ADK + WinPE add-on installed via Chocolatey"
 
-          # Verify copype.cmd is actually present (the windows-adk-winpe Chocolatey
-          # package is sometimes "Likely broken for FOSS users" and may omit it).
+          # Verify the architecture-specific WinPE PE files are present.
+          # The Chocolatey windows-adk-winpe package is sometimes "Likely broken
+          # for FOSS users" and installs copype.cmd but omits the amd64\ directory
+          # tree (winpe.wim / WinPE_OCs) that copype.cmd reads from.  Checking
+          # for those files is the correct indicator that the install succeeded.
           $arch = "${{ github.event.inputs.architecture }}"
           if ($arch -notin @('amd64','x86')) { $arch = 'amd64' }
 
-          $copype = Get-ChildItem `
-              "${env:ProgramFiles(x86)}\Windows Kits","${env:ProgramFiles}\Windows Kits" `
-              -Filter copype.cmd -Recurse -Depth 5 -ErrorAction SilentlyContinue |
-              Select-Object -First 1
+          # Look for the WinPE root (Windows Preinstallation Environment dir) first.
+          $peSearchRoots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits",
+            "${env:ProgramFiles}\Windows Kits"
+          )
+          $winPERoot = Get-ChildItem $peSearchRoots `
+              -Filter "Windows Preinstallation Environment" -Recurse -Depth 5 `
+              -ErrorAction SilentlyContinue -Directory |
+              Select-Object -First 1 -ExpandProperty FullName
 
-          if ($copype) {
-            Write-Host "✓ copype.cmd verified at: $($copype.FullName)"
+          $archPEOk = $false
+          if ($winPERoot) {
+            $archDir = Join-Path $winPERoot $arch
+            # winpe.wim or WinPE_OCs presence confirms the arch files are installed.
+            if ((Test-Path "$archDir\winpe.wim") -or (Test-Path "$archDir\WinPE_OCs")) {
+              Write-Host "✓ WinPE $arch architecture files verified at: $archDir"
+              $archPEOk = $true
+            } else {
+              Write-Host "⚠ WinPE $arch directory missing or empty at: $archDir"
+            }
           } else {
-            Write-Host "⚠ copype.cmd NOT found after Chocolatey install – falling back to direct Microsoft download"
-            # Download and run the WinPE add-on online installer directly.
-            # This is the official Microsoft bootstrapper; running it without /layout
-            # performs a direct online install and does NOT trigger exit 1001.
+            Write-Host "⚠ Windows Preinstallation Environment directory not found after Chocolatey install"
+          }
+
+          if (-not $archPEOk) {
+            Write-Host "Falling back to direct Microsoft download of WinPE add-on..."
+            # Official Microsoft bootstrapper in online (non-layout) mode.
+            # Does NOT trigger exit 1001 because it is not an offline layout installer.
             $ADK_PE_URL = "https://go.microsoft.com/fwlink/?linkid=2289981"
             $peSetup = "$env:TEMP\adkwinpesetup.exe"
             Write-Host "Downloading WinPE add-on setup (~5 MB)..."

@@ -334,6 +334,24 @@ if (-not (Test-Path $winPEPath)) {
     Write-Host "Please install Windows PE add-on for Windows ADK"
     exit 1
 }
+
+# Verify architecture-specific PE content is present.
+# copype.cmd reads from $winPEPath\<arch>\winpe.wim and WinPE_OCs\.
+# The Chocolatey windows-adk-winpe package may install copype.cmd but omit
+# the arch subdirectory (marked "Likely broken for FOSS users").
+$archPEDir = "$winPEPath\$Architecture"
+if (-not (Test-Path $archPEDir)) {
+    Write-Error "WinPE $Architecture architecture directory not found at: $archPEDir"
+    Write-Host "The Windows PE add-on appears to be partially installed."
+    Write-Host "Please reinstall the Windows PE add-on for Windows ADK."
+    exit 1
+}
+if (-not ((Test-Path "$archPEDir\winpe.wim") -or (Test-Path "$archPEDir\WinPE_OCs"))) {
+    Write-Error "WinPE $Architecture architecture files missing at: $archPEDir"
+    Write-Host "Expected winpe.wim or WinPE_OCs\ in the architecture directory."
+    Write-Host "Please reinstall the Windows PE add-on for Windows ADK."
+    exit 1
+}
 Write-Success "Windows ADK found at: $adkPath"
 
 # Get source directory (where this script is located)
