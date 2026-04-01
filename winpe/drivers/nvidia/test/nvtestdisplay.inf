@@ -1,0 +1,78 @@
+; =============================================================================
+; nvtestdisplay.inf
+;
+; TEST STUB DRIVER — NightmareOS WinPE / DISM injection pipeline test
+;
+; PURPOSE
+;   This INF exercises the Dism /Add-Driver /Recurse /ForceUnsigned code path
+;   in Build-NightmareOS-PE.ps1 so that CI can verify driver injection end-to-end
+;   without requiring real proprietary Nvidia binaries.
+;
+; HARDWARE COVERED
+;   NVIDIA GeForce RTX 3060 Ti  (GA106-400-A1)
+;   PCI\VEN_10DE&DEV_2489
+;
+; IMPORTANT
+;   This file contains NO binary components (.sys, .dll, .cat).
+;   It installs NO kernel service and performs NO CopyFiles operation.
+;   On real hardware it acts as a null/no-op device match — the display
+;   will stay on the Microsoft Basic Display Adapter until a full Nvidia
+;   DCH driver is injected.  See README.md for how to obtain that package.
+;
+;   DO NOT ship this stub as a production driver.
+; =============================================================================
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = Display
+ClassGuid   = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Provider    = %Provider%
+DriverVer   = 04/01/2024,0.0.0.1
+PnpLockdown = 1
+
+; No CatalogFile= entry.  Build script uses /ForceUnsigned so no catalog is needed.
+
+; -----------------------------------------------------------------------------
+; Manufacturer / hardware-ID table
+; Targets amd64 WinPE (Windows 10/11, build 22000+) — same as the full DCH INF.
+; -----------------------------------------------------------------------------
+[Manufacturer]
+%Provider% = NV_RTX3060Ti, NTamd64, NTamd64.10.0...22000
+
+[NV_RTX3060Ti.NTamd64]
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_38881462
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_408C1458
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_40971462
+
+[NV_RTX3060Ti.NTamd64.10.0...22000]
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_38881462
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_408C1458
+%RTX3060Ti.DevDesc% = RTX3060Ti_Install, PCI\VEN_10DE&DEV_2489&SUBSYS_40971462
+
+; -----------------------------------------------------------------------------
+; Install section — stub: no CopyFiles, no registry writes beyond HW filter
+; -----------------------------------------------------------------------------
+[RTX3060Ti_Install.NT]
+; Intentionally empty — test stub does not copy any driver binaries.
+
+[RTX3060Ti_Install.NT.HW]
+AddReg = RTX3060Ti_HW_AddReg
+
+[RTX3060Ti_HW_AddReg]
+; Clear upper-filter chain so the stub does not interfere with other drivers.
+HKR,,"UpperFilters",0x00010000
+
+; -----------------------------------------------------------------------------
+; Services section — no kernel service in this test stub.
+; A production Nvidia DCH driver would AddService=nvlddmkm here and reference
+; its kernel binary (nvlddmkm.sys).
+; -----------------------------------------------------------------------------
+[RTX3060Ti_Install.NT.Services]
+; No AddService — stub only.
+
+; -----------------------------------------------------------------------------
+[Strings]
+Provider           = "NightmareOS Driver Test"
+RTX3060Ti.DevDesc  = "NVIDIA GeForce RTX 3060 Ti (Test Stub - Pipeline Validation Only)"

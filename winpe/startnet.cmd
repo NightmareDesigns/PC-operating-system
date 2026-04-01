@@ -20,8 +20,8 @@ if "%PE_FIRMWARE%"=="0x2" (
     echo [+] Boot mode: Legacy BIOS
 )
 
-REM Initialize display subsystem (required for NVIDIA Ampere GPUs such as RTX 3060 Ti)
-echo [*] Initializing display subsystem...
+REM Allow 1 second for PnP to enumerate freshly-loaded drivers (including Nvidia
+REM Ampere GPUs such as RTX 3060 Ti) before the display is used by the banner.
 timeout /t 1 /nobreak > nul
 echo [+] Display ready
 

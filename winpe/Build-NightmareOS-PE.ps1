@@ -244,7 +244,7 @@ try {
         "WinPE-PowerShell.cab",
         "WinPE-StorageWMI.cab",
         "WinPE-DismCmdlets.cab",
-        "WinPE-HTA.cab"
+        "WinPE-HTA.cab"         # HTML Application host — required for Edge kiosk rendering compatibility
     )
 
     $packagesPath = "$winPEPath\$Architecture\WinPE_OCs"

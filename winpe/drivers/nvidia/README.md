@@ -47,6 +47,28 @@ run, but:
 - Edge GPU acceleration will be disabled (software rendering fallback).
 - On some RTX 30-series systems the screen may remain black until the driver is loaded.
 
+## Test stub (pipeline validation)
+
+A minimal stub INF is included in the `test/` sub-folder:
+
+```
+winpe/drivers/nvidia/
+├── README.md               ← this file
+└── test/
+    └── nvtestdisplay.inf   ← test stub (no binaries, no kernel service)
+```
+
+`Build-NightmareOS-PE.ps1` uses `Dism /Add-Driver /Recurse`, so it finds the stub
+automatically.  The stub declares the RTX 3060 Ti hardware ID
+(`PCI\VEN_10DE&DEV_2489`) but performs **no CopyFiles and installs no kernel
+service**, so DISM can parse and stage it without any `.sys` or `.dll` files
+being present.  This lets CI verify the full driver-injection code path without
+requiring proprietary Nvidia binaries.
+
+On real hardware the stub acts as a null match — the display stays on the
+Microsoft Basic Display Adapter until a full Nvidia DCH package is placed
+alongside it (see above).
+
 ## Ventoy and UEFI note
 
 Driver injection is independent of the boot method. Whether you boot the ISO directly from
