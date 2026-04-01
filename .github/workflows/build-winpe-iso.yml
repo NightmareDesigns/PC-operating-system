@@ -109,8 +109,8 @@ jobs:
       # ── 3b. Verify ADK installation and show discovered path ──────────────
       #
       # Confirms the ADK was installed correctly before the build starts.
-      # Shows the exact path that Find-ADKPath will use, making CI logs
-      # easier to debug if the build step fails to find a tool.
+      # Shows the exact paths that Find-ADKPath and Find-OscdimgPath will
+      # use, making CI logs easier to debug if the build step fails.
       - name: Verify ADK installation
         shell: pwsh
         run: |
@@ -142,6 +142,30 @@ jobs:
             $winpe = Join-Path $adk "Windows Preinstallation Environment"
             if (Test-Path $winpe) { Write-Host "✓ WinPE add-on present: $winpe" }
             else { Write-Host "⚠ WinPE add-on NOT found under ADK path (may cause build failure)" }
+            # Check for oscdimg.exe (primary ISO creation tool)
+            # Only check known-valid architectures; fall back to amd64 for non-dispatch triggers.
+            $arch = "${{ github.event.inputs.architecture }}"
+            if ($arch -notin @('amd64','x86')) { $arch = 'amd64' }
+            $oscdimgFound = $false
+            foreach ($a in @($arch, 'amd64', 'x86') | Select-Object -Unique) {
+              $p = Join-Path $adk "Deployment Tools\$a\Oscdimg\oscdimg.exe"
+              if (Test-Path $p) {
+                Write-Host "✓ oscdimg.exe found at: $p"
+                $oscdimgFound = $true
+                break
+              }
+            }
+            if (-not $oscdimgFound) {
+              # Fallback: filesystem search under Windows Kits.
+              # Depth 5 matches the ADK tree: Windows Kits\10\ADK\Deployment Tools\<arch>\Oscdimg\
+              $hit = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits","${env:ProgramFiles}\Windows Kits" `
+                       -Filter oscdimg.exe -Recurse -Depth 5 -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+              if ($hit) { Write-Host "✓ oscdimg.exe found via search: $($hit.FullName)"; $oscdimgFound = $true }
+            }
+            if (-not $oscdimgFound) {
+              Write-Host "⚠ oscdimg.exe NOT found – build will fail at ISO creation step unless xorriso is available"
+            }
           } else {
             Write-Warning "ADK not found via registry or known paths – build script will perform its own search."
           }
