@@ -116,34 +116,162 @@ Write-Success "Running with administrator privileges"
 # Check for Windows ADK
 Write-Step "Checking for Windows ADK installation..."
 
-# Resolve the ADK path: check registry first, then common install paths.
-$adkPath = $null
-try {
+function Find-ADKPath {
+    # ── Source 1: Registry (both WOW6432Node and native hive) ─────────────────
     $regPaths = @(
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
         "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
     )
     foreach ($regPath in $regPaths) {
-        if (Test-Path $regPath) {
-            $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
-            if ($kitsRoot) {
-                $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                if (Test-Path $candidate) { $adkPath = $candidate; break }
+        try {
+            if (Test-Path $regPath) {
+                $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                if ($kitsRoot) {
+                    $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) {
+                        Write-Host "Found ADK via registry ($regPath): $candidate"
+                        return $candidate
+                    }
+                }
+            }
+        } catch {
+            Write-Host "Registry check ($regPath) failed (non-fatal): $_"
+        }
+    }
+
+    # ── Source 2: Known filesystem paths (32-bit and 64-bit Program Files) ────
+    foreach ($p in @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+    )) {
+        if (Test-Path $p) { Write-Host "Found ADK at known path: $p"; return $p }
+    }
+
+    # ── Source 3: Get-Package (Windows package manager) ───────────────────────
+    try {
+        $pkg = Get-Package -Name "*Windows Assessment and Deployment Kit*" `
+                           -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($pkg) {
+            $pkgLoc = Split-Path $pkg.Source -ErrorAction SilentlyContinue
+            foreach ($sub in @("Assessment and Deployment Kit", ".")) {
+                $candidate = if ($sub -eq ".") { $pkgLoc } else { Join-Path $pkgLoc $sub }
+                if ($candidate -and (Test-Path $candidate)) {
+                    Write-Host "Found ADK via Get-Package: $candidate"
+                    return $candidate
+                }
+            }
+        }
+    } catch { Write-Host "Get-Package check failed (non-fatal): $_" }
+
+    # ── Source 4: winget (Windows Package Manager CLI) ────────────────────────
+    try {
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            $wgOut = & winget list --name "Windows Assessment and Deployment Kit" 2>&1 |
+                     Where-Object { $_ -match "Windows Assessment" }
+            if ($wgOut) {
+                Write-Host "winget reports ADK installed; resolving path via registry..."
+                foreach ($regPath in $regPaths) {
+                    $kitsRoot = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                    if ($kitsRoot) {
+                        $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                        if (Test-Path $candidate) {
+                            Write-Host "Found ADK via winget+registry: $candidate"
+                            return $candidate
+                        }
+                    }
+                }
+            }
+        }
+    } catch { Write-Host "winget check failed (non-fatal): $_" }
+
+    # ── Source 5: Filesystem search for copype.cmd ────────────────────────────
+    # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
+    try {
+        $searchRoots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits",
+            "${env:ProgramFiles}\Windows Kits",
+            "$env:SystemDrive\Windows Kits"
+        ) | Where-Object { Test-Path $_ }
+        foreach ($sr in $searchRoots) {
+            $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse `
+                                 -Depth 4 -ErrorAction SilentlyContinue |
+                   Select-Object -First 1
+            if ($hit) {
+                # Walk up: <ADK>\WinPE\<arch>\copype.cmd → parent(2) = ADK root
+                $candidate = $hit.DirectoryName | Split-Path | Split-Path
+                Write-Host "Found ADK via copype.cmd search: $candidate"
+                if (Test-Path $candidate) { return $candidate }
+            }
+        }
+    } catch { Write-Host "copype.cmd search failed (non-fatal): $_" }
+
+    return $null
+}
+
+# ── Find oscdimg.exe (ADK Deployment Tools + filesystem search) ───────────────
+function Find-OscdimgPath([string]$adkRoot, [string]$arch) {
+    # 1. Standard ADK Deployment Tools paths (try requested arch then common ones)
+    if ($adkRoot) {
+        foreach ($a in @($arch, "amd64", "x86")) {
+            $candidate = Join-Path $adkRoot "Deployment Tools\$a\Oscdimg\oscdimg.exe"
+            if (Test-Path $candidate) {
+                Write-Host "Found oscdimg at ADK path: $candidate"
+                return $candidate
             }
         }
     }
-} catch {}
-
-if (-not $adkPath) {
-    $candidates = @(
-        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
-        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
-    )
-    foreach ($c in $candidates) {
-        if (Test-Path $c) { $adkPath = $c; break }
+    # 2. Filesystem search under Windows Kits (handles non-standard ADK layouts)
+    foreach ($sr in @(
+        "${env:ProgramFiles(x86)}\Windows Kits",
+        "${env:ProgramFiles}\Windows Kits"
+    ) | Where-Object { Test-Path $_ }) {
+        $hit = Get-ChildItem $sr -Filter "oscdimg.exe" -Recurse -Depth 5 `
+                             -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($hit) {
+            Write-Host "Found oscdimg via filesystem search: $($hit.FullName)"
+            return $hit.FullName
+        }
     }
+    return $null
 }
 
+# ── Create ISO using xorriso (alternative to oscdimg; no ADK dependency) ──────
+function New-ISOWithXorriso([string]$mediaDir, [string]$isoPath,
+                            [string]$etfsboot, [string]$efisys) {
+    # Locate xorriso binary (typically installed via Chocolatey)
+    $xrCmd = Get-Command xorriso -ErrorAction SilentlyContinue
+    $xr    = if ($xrCmd) { $xrCmd.Source } else { $null }
+    if (-not $xr) {
+        foreach ($p in @(
+            "C:\ProgramData\chocolatey\bin\xorriso.exe",
+            "C:\tools\xorriso\xorriso.exe"
+        )) { if (Test-Path $p) { $xr = $p; break } }
+    }
+    if (-not $xr) { Write-Warning "xorriso not found on this system."; return $false }
+    Write-Host "ISO creator: xorriso ($xr)"
+
+    $xrArgs = @(
+        "-as", "mkisofs", "-iso-level", "3",
+        "-full-iso9660-filenames", "-volid", "NIGHTMARE_OS",
+        "-joliet", "-joliet-long", "-rational-rock"
+    )
+    if ($etfsboot -and (Test-Path $etfsboot)) {
+        $xrArgs += @("-b", "boot/etfsboot.com", "-no-emul-boot",
+                     "-boot-load-seg", "1984", "-boot-load-size", "8", "-boot-info-table")
+    }
+    if ($efisys -and (Test-Path $efisys)) {
+        $xrArgs += @("-eltorito-alt-boot", "-e", "efi/microsoft/boot/efisys.bin", "-no-emul-boot")
+    }
+    $xrArgs += @("-o", $isoPath, $mediaDir)
+
+    Write-Host "Running xorriso..."
+    & $xr @xrArgs
+    if ($LASTEXITCODE -eq 0) { Write-Success "ISO created with xorriso"; return $true }
+    Write-Warning "xorriso exited with code $LASTEXITCODE"
+    return $false
+}
+
+$adkPath = Find-ADKPath
 if (-not $adkPath) {
     Write-Error "Windows ADK not found!"
     Write-Host "Please install Windows ADK for Windows 11 from:"
@@ -441,81 +569,67 @@ Write-Success "Changes committed successfully"
 # Create ISO (optional)
 if ($CreateISO) {
     Write-Step "Creating bootable ISO file..."
-    $isoPath = "$WorkDir\NightmareOS-PE.iso"
+    $isoPath  = "$WorkDir\NightmareOS-PE.iso"
     $mediaDir = "$WorkDir\media"
+    $etfsboot = "$mediaDir\boot\etfsboot.com"
+    $efisys   = "$mediaDir\efi\microsoft\boot\efisys.bin"
 
-    # Check for oscdimg tool (part of Windows ADK)
-    $oscdimgPath = "$adkPath\Deployment Tools\$Architecture\Oscdimg\oscdimg.exe"
+    if (-not (Test-Path $etfsboot)) {
+        Write-Warning "BIOS boot file not found: $etfsboot – continuing without BIOS boot."
+        $etfsboot = $null
+    }
+    if (-not (Test-Path $efisys)) {
+        Write-Warning "UEFI boot file not found: $efisys – continuing without UEFI boot."
+        $efisys = $null
+    }
 
-    if (-not (Test-Path $oscdimgPath)) {
-        Write-Warning "oscdimg.exe not found at: $oscdimgPath"
-        Write-Warning "ISO creation skipped. Install Windows ADK Deployment Tools to enable ISO creation."
-    } else {
-        Write-Host "Using oscdimg: $oscdimgPath"
-        Write-Host "Creating ISO from: $mediaDir"
-        Write-Host "Output: $isoPath"
+    $isoCreated  = $false
 
-        # oscdimg parameters:
-        # -m = Ignore maximum image size limit
-        # -o = Optimize storage by encoding duplicate files once
-        # -u2 = Produce UDF file system
-        # -udfver102 = UDF version 1.02
-        # -bootdata:2 = Two boot images (for BIOS and UEFI)
-        # First boot image: BIOS boot (etfsboot.com)
-        # Second boot image: UEFI boot (efisys.bin)
-
-        $etfsboot = "$mediaDir\boot\etfsboot.com"
-        $efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
-
-        # Check if boot files exist
-        if (-not (Test-Path $etfsboot)) {
-            Write-Warning "BIOS boot file not found: $etfsboot"
-            Write-Warning "Attempting ISO creation without BIOS boot support..."
-            $etfsboot = $null
-        }
-
-        if (-not (Test-Path $efisys)) {
-            Write-Warning "UEFI boot file not found: $efisys"
-            Write-Warning "Attempting ISO creation without UEFI boot support..."
-            $efisys = $null
-        }
-
+    # ── Tool 1: oscdimg (ADK Deployment Tools + filesystem search) ────────────
+    $oscdimgPath = Find-OscdimgPath $adkPath $Architecture
+    if ($oscdimgPath) {
+        Write-Host "ISO creator: oscdimg ($oscdimgPath)"
+        Write-Host "Source: $mediaDir  →  Output: $isoPath"
         try {
-            # Build oscdimg command based on available boot files
             if ($etfsboot -and $efisys) {
-                # Both BIOS and UEFI boot
                 $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
                 & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($efisys) {
-                # UEFI boot only
                 $bootData = "2#pEF,e,b`"$efisys`""
                 & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($etfsboot) {
-                # BIOS boot only
                 $bootData = "1#p0,e,b`"$etfsboot`""
                 & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } else {
-                # No boot files - create data-only ISO
-                Write-Warning "No boot files found - creating non-bootable ISO"
+                Write-Warning "No boot files found – creating non-bootable ISO."
                 & $oscdimgPath -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
             }
-
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "ISO created successfully!"
-                $isoSize = (Get-Item $isoPath).Length / 1MB
-                Write-Host "  • ISO File: $isoPath"
-                Write-Host "  • ISO Size: $([math]::Round($isoSize, 2)) MB"
-                Write-Host ""
-                Write-Host "You can now:" -ForegroundColor Yellow
-                Write-Host "  • Burn the ISO to a DVD"
-                Write-Host "  • Use with virtual machines (VirtualBox, VMware, Hyper-V)"
-                Write-Host "  • Create bootable USB with Rufus or similar tools"
-            } else {
-                Write-Error "ISO creation failed with exit code: $LASTEXITCODE"
-            }
+            $isoCreated = ($LASTEXITCODE -eq 0)
+            if (-not $isoCreated) { Write-Warning "oscdimg exited with code $LASTEXITCODE" }
         } catch {
-            Write-Error "Error creating ISO: $_"
+            Write-Warning "oscdimg error: $_"
         }
+    } else {
+        Write-Warning "oscdimg.exe not found – trying alternative ISO creator."
+    }
+
+    # ── Tool 2: xorriso (no ADK dependency; installed via Chocolatey) ─────────
+    if (-not $isoCreated) {
+        $isoCreated = New-ISOWithXorriso $mediaDir $isoPath $etfsboot $efisys
+    }
+
+    if ($isoCreated) {
+        $isoSize = (Get-Item $isoPath).Length / 1MB
+        Write-Host "  • ISO File: $isoPath"
+        Write-Host "  • ISO Size: $([math]::Round($isoSize, 2)) MB"
+        Write-Host ""
+        Write-Host "You can now:" -ForegroundColor Yellow
+        Write-Host "  • Burn the ISO to a DVD"
+        Write-Host "  • Use with virtual machines (VirtualBox, VMware, Hyper-V)"
+        Write-Host "  • Create bootable USB with Rufus or similar tools"
+    } else {
+        Write-Error "ISO creation failed – neither oscdimg nor xorriso succeeded."
+        exit 1
     }
 } else {
     Write-Step "Preparing bootable media..."
