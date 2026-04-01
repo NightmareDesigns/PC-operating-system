@@ -216,10 +216,12 @@ Replace `E:` with your USB drive letter.
 **For ISO:**
 
 ```cmd
-oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"C:\WinPE_NightmareOS\media\boot\etfsboot.com"#pEF,e,b"C:\WinPE_NightmareOS\media\efi\microsoft\boot\efisys.bin" C:\WinPE_NightmareOS\media C:\WinPE_NightmareOS\NightmareOS-PE.iso
+oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"C:\WinPE_NightmareOS\media\boot\etfsboot.com"#pEF,e,b"C:\WinPE_NightmareOS\media\efi\microsoft\boot\efisys_noprompt.bin" C:\WinPE_NightmareOS\media C:\WinPE_NightmareOS\NightmareOS-PE.iso
 ```
 
-This creates a dual-boot ISO (BIOS + UEFI).
+This creates a dual-boot ISO (BIOS + UEFI). Using `efisys_noprompt.bin` ensures the ISO boots correctly when loaded through Ventoy or other chain-loaders (skips the "Press any key to boot from CD/DVD" prompt that Ventoy never triggers).
+
+> **Ventoy users:** this ISO can be placed directly on a Ventoy USB drive and selected from the Ventoy boot menu. No special configuration is required.
 
 ## Architecture
 

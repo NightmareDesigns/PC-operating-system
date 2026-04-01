@@ -233,6 +233,7 @@ The Windows PE edition combines:
 ✅ Network support included (wired ethernet recommended)
 ✅ Full desktop environment with all features
 ✅ Compatible with UEFI and Legacy BIOS
+✅ Compatible with [Ventoy](https://www.ventoy.net) — just copy the ISO to your Ventoy USB
 
 ### Quick Start – Build WinPE ISO in the Cloud (no PC required!)
 
@@ -244,7 +245,7 @@ Don't have a Windows PC?  GitHub Actions can build the ISO for you automatically
 4. Wait ~20-40 minutes for the job to complete.
 5. Click the finished run → scroll to **Artifacts** → download **`NightmareOS-PE-ISO-<N>`**.
 6. Extract the ZIP to get `NightmareOS-PE.iso`.
-7. Boot in a VM (VirtualBox / VMware / Hyper-V) or write to USB with [Rufus](https://rufus.ie).
+7. Boot in a VM (VirtualBox / VMware / Hyper-V), copy to a [Ventoy](https://www.ventoy.net) USB drive, or write to USB with [Rufus](https://rufus.ie).
 
 ### Quick Start – WinPE (local build, requires Windows PC)
 

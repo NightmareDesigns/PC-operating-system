@@ -548,13 +548,24 @@ IconIndex=14
 Write-Step "Rebuilding bootable ISO..."
 
 $etfsboot = "$isoSrc\boot\etfsboot.com"
-$efisys   = "$isoSrc\efi\microsoft\boot\efisys.bin"
+
+# Prefer efisys_noprompt.bin so the ISO boots from Ventoy (and other
+# chainloaders) without requiring "Press any key to boot from CD/DVD".
+$efisysNoprompt = "$isoSrc\efi\microsoft\boot\efisys_noprompt.bin"
+$efisysFallback  = "$isoSrc\efi\microsoft\boot\efisys.bin"
+if (Test-Path $efisysNoprompt) {
+    $efisys = $efisysNoprompt
+} elseif (Test-Path $efisysFallback) {
+    $efisys = $efisysFallback
+} else {
+    $efisys = $null
+}
 
 $hasBios = Test-Path $etfsboot
-$hasUefi = Test-Path $efisys
+$hasUefi = ($null -ne $efisys)
 
 if (-not $hasBios) { Write-Warn "BIOS boot file not found: $etfsboot" }
-if (-not $hasUefi) { Write-Warn "UEFI boot file not found: $efisys" }
+if (-not $hasUefi) { Write-Warn "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin)" }
 if (-not $hasBios -and -not $hasUefi) {
     Write-Fail "No boot files found – cannot create a bootable ISO."
     exit 1

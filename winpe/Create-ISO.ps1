@@ -156,25 +156,38 @@ Write-Success "Found oscdimg: $oscdimgPath"
 Write-Step "Creating bootable ISO..."
 
 $etfsboot = "$mediaDir\boot\etfsboot.com"
-$efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
+
+# Prefer efisys_noprompt.bin for Ventoy/chainloader compatibility (skips the
+# "Press any key to boot from CD or DVD..." prompt that Ventoy never triggers).
+# Fall back to efisys.bin if the noprompt variant is absent.
+$efisysNoprompt = "$mediaDir\efi\microsoft\boot\efisys_noprompt.bin"
+$efisysFallback = "$mediaDir\efi\microsoft\boot\efisys.bin"
+if (Test-Path $efisysNoprompt) {
+    $efisys = $efisysNoprompt
+} elseif (Test-Path $efisysFallback) {
+    $efisys = $efisysFallback
+} else {
+    $efisys = $null
+}
 
 # Check boot files
 $hasEtfsboot = Test-Path $etfsboot
-$hasEfisys = Test-Path $efisys
+$hasEfisys = ($null -ne $efisys)
 
 if (-not $hasEtfsboot) {
     Write-Warning "BIOS boot file not found: $etfsboot"
 }
 
 if (-not $hasEfisys) {
-    Write-Warning "UEFI boot file not found: $efisys"
+    Write-Warning "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin)"
 }
 
 if (-not $hasEtfsboot -and -not $hasEfisys) {
     Write-Error "No boot files found! ISO will not be bootable."
     Write-Host "Expected files:"
     Write-Host "  • $etfsboot (BIOS boot)"
-    Write-Host "  • $efisys (UEFI boot)"
+    Write-Host "  • $efisysNoprompt (UEFI boot, Ventoy-compatible)"
+    Write-Host "  • $efisysFallback (UEFI boot, fallback)"
     exit 1
 }
 
