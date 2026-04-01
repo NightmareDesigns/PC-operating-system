@@ -613,25 +613,42 @@ if ($CreateISO) {
         #   which is required for Ventoy and automated kiosk environments.
         #   Falls back to efisys.bin when efisys_noprompt.bin is absent.
 
-        $etfsboot = "$mediaDir\boot\etfsboot.com"
+        # Locate boot files.  The ADK stores boot-sector binaries in two places:
+        #   1. Media\boot\etfsboot.com  and  Media\efi\microsoft\boot\efisys*.bin
+        #   2. fwfiles\etfsboot.com     and  fwfiles\efisys*.bin
+        # Some ADK installs (especially Chocolatey) only populate fwfiles, so
+        # we search both locations.
+        $fwDir = "$WorkDir\fwfiles"
 
-        # Prefer efisys_noprompt.bin: no "Press any key to boot from EFI" prompt.
-        # This is required for Ventoy compatibility and clean UEFI kiosk boot.
-        $efisysNoprompt = "$mediaDir\efi\microsoft\boot\efisys_noprompt.bin"
-        $efisysFallback  = "$mediaDir\efi\microsoft\boot\efisys.bin"
-        $efisys = if (Test-Path $efisysNoprompt) { $efisysNoprompt } else { $efisysFallback }
-
-        # Check if boot files exist
-        if (-not (Test-Path $etfsboot)) {
-            Write-Warning "BIOS boot file not found: $etfsboot"
-            Write-Warning "Attempting ISO creation without BIOS boot support..."
-            $etfsboot = $null
+        # BIOS boot file
+        $etfsboot = $null
+        foreach ($candidate in @("$mediaDir\boot\etfsboot.com", "$fwDir\etfsboot.com")) {
+            if (Test-Path $candidate) { $etfsboot = $candidate; break }
         }
 
-        if (-not (Test-Path $efisys)) {
-            Write-Warning "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin)"
+        # UEFI boot file — prefer efisys_noprompt.bin (no "Press any key" prompt,
+        # required for Ventoy compatibility and automated kiosk boot).
+        $efisys = $null
+        foreach ($candidate in @(
+            "$mediaDir\efi\microsoft\boot\efisys_noprompt.bin",
+            "$fwDir\efisys_noprompt.bin",
+            "$mediaDir\efi\microsoft\boot\efisys.bin",
+            "$fwDir\efisys.bin"
+        )) {
+            if (Test-Path $candidate) { $efisys = $candidate; break }
+        }
+
+        # Check if boot files were found
+        if (-not $etfsboot) {
+            Write-Warning "BIOS boot file (etfsboot.com) not found in media\ or fwfiles\"
+            Write-Warning "Attempting ISO creation without BIOS boot support..."
+        } else {
+            Write-Host "BIOS boot file: $etfsboot"
+        }
+
+        if (-not $efisys) {
+            Write-Warning "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin in media\ and fwfiles\)"
             Write-Warning "Attempting ISO creation without UEFI boot support..."
-            $efisys = $null
         } else {
             $efisysLabel = if ($efisys -like "*noprompt*") { "efisys_noprompt.bin (Ventoy-compatible)" } else { "efisys.bin" }
             Write-Host "64-bit UEFI boot file: $efisysLabel"
@@ -639,27 +656,28 @@ if ($CreateISO) {
 
         try {
             # Build oscdimg command based on available boot files
-            # -n  = allow long filenames (>8.3) in ISO9660 layer — required for BIOS boot
             # -m  = ignore maximum image size limit
             # -o  = optimize storage by encoding duplicate files once
             # -u2 = produce UDF 2.0 file system (UEFI reads UDF; BIOS reads ISO9660)
+            #        NOTE: -n (long filenames) is incompatible with -u2; UDF natively
+            #        supports long filenames so -n is unnecessary
             # -udfver102 = set UDF revision to 1.02 for maximum firmware compatibility
             if ($etfsboot -and $efisys) {
                 # Both BIOS and UEFI boot
                 $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
-                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($efisys) {
                 # UEFI boot only
                 $bootData = "2#pEF,e,b`"$efisys`""
-                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($etfsboot) {
                 # BIOS boot only
                 $bootData = "1#p0,e,b`"$etfsboot`""
-                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } else {
                 # No boot files - create data-only ISO
                 Write-Warning "No boot files found - creating non-bootable ISO"
-                & $oscdimgPath -n -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
+                & $oscdimgPath -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
             }
 
             if ($LASTEXITCODE -eq 0) {
