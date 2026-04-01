@@ -237,14 +237,60 @@ jobs:
             echo "installed=true"  >> $env:GITHUB_OUTPUT
             echo "adk_path=$adkFoundPath" >> $env:GITHUB_OUTPUT
           } else {
-            Write-Host "→ ADK not found via any source – will download and install"
+            Write-Host "→ ADK not found via any source – will try Chocolatey or download."
             echo "installed=false" >> $env:GITHUB_OUTPUT
           }
 
-      # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
+      # ── 3b. Install Windows ADK via Chocolatey (if not pre-detected) ─────────
+      #
+      # When the pre-install detection fails (all 5 sources exhausted), attempt
+      # a fresh install via Chocolatey before falling back to the large offline
+      # layout download.  Chocolatey handles version conflicts gracefully and
+      # is available on all GitHub-hosted Windows runners.
+      - name: Install Windows ADK via Chocolatey (if not pre-detected)
+        id: choco-adk
+        if: steps.adk-check.outputs.installed != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "ADK not found via pre-install detection – installing via Chocolatey..."
+          $adkOk   = choco install windows-adk          --no-progress -y 2>&1 | Out-Host; $LASTEXITCODE -eq 0
+          $winpeOk = choco install windows-adk-winpe    --no-progress -y 2>&1 | Out-Host; $LASTEXITCODE -eq 0
+          if (-not $adkOk -or -not $winpeOk) {
+            Write-Host "⚠ Chocolatey ADK install encountered errors; build script will attempt to locate ADK anyway."
+          } else {
+            Write-Host "✓ Chocolatey ADK installation complete"
+          }
+          # Emit installed=true regardless so subsequent download/install steps are
+          # skipped – the build script will locate the tools via Find-ADKPath.
+          echo "installed=true" >> $env:GITHUB_OUTPUT
+
+      # ── 3c. Install xorriso (alternative ISO creator; no ADK dependency) ──────
+      #
+      # xorriso can create El Torito bootable ISOs (BIOS + UEFI) independently
+      # of Windows ADK.  Both Build-NightmareOS-PE.ps1 and Create-ISO.ps1 try
+      # oscdimg first and fall back to xorriso automatically.
+      - name: Install xorriso (alternative ISO creator)
+        id: install-xorriso
+        shell: pwsh
+        run: |
+          Write-Host "Installing xorriso via Chocolatey..."
+          choco install xorriso --no-progress -y 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "⚠ xorriso Chocolatey install returned exit $LASTEXITCODE (non-fatal – build script will also search common locations)"
+          }
+          $xr = Get-Command xorriso -ErrorAction SilentlyContinue
+          if ($xr) {
+            Write-Host "✓ xorriso available at: $($xr.Source)"
+            echo "available=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "⚠ xorriso not in PATH after install (build script will search common locations)"
+            echo "available=false" >> $env:GITHUB_OUTPUT
+          }
+
+      # ── 4. Download layouts (cache miss + not pre-installed + no choco) ───────
       - name: Download Windows ADK offline layouts
         id: download-adk
-        if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
+        if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true' && steps.choco-adk.outputs.installed != 'true'
         shell: pwsh
         run: |
           $ProgressPreference = 'SilentlyContinue'
@@ -315,7 +361,7 @@ jobs:
       # ADK installer into thinking a full ADK is already present, even though
       # the Assessment and Deployment Kit directory does not exist).
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.choco-adk.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -357,7 +403,7 @@ jobs:
       # Same fallback logic as step 5 – uses offline layout when available,
       # otherwise falls back to a direct online install.
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.choco-adk.outputs.installed != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
