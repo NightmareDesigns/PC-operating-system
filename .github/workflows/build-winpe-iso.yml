@@ -68,8 +68,16 @@ jobs:
         run: |
           Write-Host "Installing Windows ADK via Chocolatey..."
           choco install windows-adk       --no-progress -y 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windows-adk Chocolatey install failed (exit $LASTEXITCODE)"
+            exit 1
+          }
           choco install windows-adk-winpe --no-progress -y 2>&1 | Out-Host
-          Write-Host "✓ ADK installation complete (or already up-to-date)"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windows-adk-winpe Chocolatey install failed (exit $LASTEXITCODE)"
+            exit 1
+          }
+          Write-Host "✓ Windows ADK + WinPE add-on installed successfully"
 
       # ── 3. Install xorriso (alternative ISO creator; no ADK dependency) ───
       #
@@ -90,6 +98,46 @@ jobs:
             Write-Host "✓ xorriso available at: $($xr.Source)"
           } else {
             Write-Host "⚠ xorriso not in PATH after install (build script will search common locations)"
+          }
+
+      # ── 3b. Verify ADK installation and show discovered path ──────────────
+      #
+      # Confirms the ADK was installed correctly before the build starts.
+      # Shows the exact path that Find-ADKPath will use, making CI logs
+      # easier to debug if the build step fails to find a tool.
+      - name: Verify ADK installation
+        shell: pwsh
+        run: |
+          function Find-ADKPath {
+            $regPaths = @(
+              "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+              "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+            )
+            foreach ($rp in $regPaths) {
+              try {
+                if (Test-Path $rp) {
+                  $root = (Get-ItemProperty $rp -ErrorAction SilentlyContinue).KitsRoot10
+                  if ($root) {
+                    $candidate = Join-Path $root "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) { return $candidate }
+                  }
+                }
+              } catch {}
+            }
+            foreach ($p in @(
+              "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+              "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+            )) { if (Test-Path $p) { return $p } }
+            return $null
+          }
+          $adk = Find-ADKPath
+          if ($adk) {
+            Write-Host "✓ ADK found at: $adk"
+            $winpe = Join-Path $adk "Windows Preinstallation Environment"
+            if (Test-Path $winpe) { Write-Host "✓ WinPE add-on present: $winpe" }
+            else { Write-Host "⚠ WinPE add-on NOT found under ADK path (may cause build failure)" }
+          } else {
+            Write-Warning "ADK not found via registry or known paths – build script will perform its own search."
           }
 
       # ── 4. Build Nightmare OS WinPE ISO ───────────────────────────────────

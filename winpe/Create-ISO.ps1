@@ -307,5 +307,7 @@ Write-Host "Usage Options:" -ForegroundColor Yellow
     Write-Success "ISO ready to use!"
 
 Write-Host ""
-Write-Host "Press any key to exit..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if ($Host.Name -eq 'ConsoleHost' -and -not $env:CI) {
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
