@@ -186,6 +186,8 @@ function Find-ADKPath {
 
     # ── Source 5: Filesystem search for copype.cmd ────────────────────────────
     # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
+    # From the "Windows Kits\" search root that is 4 directory levels deep:
+    #   Windows Kits\10\Assessment and Deployment Kit\Windows Preinstallation Environment\<arch>\copype.cmd
     try {
         $searchRoots = @(
             "${env:ProgramFiles(x86)}\Windows Kits",
@@ -197,7 +199,9 @@ function Find-ADKPath {
                                  -Depth 4 -ErrorAction SilentlyContinue |
                    Select-Object -First 1
             if ($hit) {
-                # Walk up: <ADK>\WinPE\<arch>\copype.cmd → parent(2) = ADK root
+                # Walk up from copype.cmd:
+                #   <arch>\ → Windows Preinstallation Environment\ → Assessment and Deployment Kit\ (ADK root)
+                # DirectoryName gives <arch>\, two Split-Path calls give the ADK root.
                 $candidate = $hit.DirectoryName | Split-Path | Split-Path
                 Write-Host "Found ADK via copype.cmd search: $candidate"
                 if (Test-Path $candidate) { return $candidate }

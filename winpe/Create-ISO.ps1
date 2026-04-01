@@ -171,6 +171,9 @@ function New-ISOWithXorriso([string]$mediaDir, [string]$isoPath,
     $xrArgs = @("-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
                 "-volid", "NIGHTMARE_OS", "-joliet", "-joliet-long", "-rational-rock")
     if ($etfsboot -and (Test-Path $etfsboot)) {
+        # 0x07C0 (decimal 1984) is the standard BIOS boot-load segment used by
+        # mkisofs/genisoimage for El Torito bootable ISOs – it maps to linear
+        # address 0x7C00, the conventional BIOS boot sector entry point.
         $xrArgs += @("-b", "boot/etfsboot.com", "-no-emul-boot",
                      "-boot-load-seg", "1984", "-boot-load-size", "8", "-boot-info-table")
     }
