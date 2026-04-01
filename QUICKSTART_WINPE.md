@@ -122,6 +122,10 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 ### Boot Problems
 
+**SYSTEM_THREAD_EXCEPTION_NOT_HANDLED (Blue Screen) on boot:**
+This BSOD was caused by a CI test driver stub that had real RTX 3060 Ti hardware IDs being injected into the WinPE image. It is fixed in the current build.
+Download the latest ISO from the **[Build Nightmare OS WinPE ISO](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-winpe-iso.yml)** workflow — click the most recent successful run, then download the `NightmareOS-PE-ISO-*` artifact.
+
 **USB doesn't boot:**
 - Disable Secure Boot in BIOS
 - Try USB 2.0 port instead of USB 3.0

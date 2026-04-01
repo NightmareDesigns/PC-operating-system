@@ -341,32 +341,49 @@ try {
         }
     }
 
-    # Inject NVIDIA GPU drivers for RTX 3060 Ti / Ampere architecture support
+    # Inject NVIDIA GPU drivers for RTX 3060 Ti / Ampere architecture support.
+    # IMPORTANT: Only inject if real kernel-mode driver binaries (.sys) exist outside
+    # the test/ subdirectory.  The test/ dir contains a CI pipeline-validation stub
+    # with FICTITIOUS hardware IDs — it is safe to inject but does nothing useful.
+    # If the test stub previously had real RTX 3060 Ti hardware IDs injected, it would
+    # cause SYSTEM_THREAD_EXCEPTION_NOT_HANDLED on boot (display driver crash).
     if ($IncludeNvidiaDrivers) {
         Write-Step "Checking for NVIDIA GPU drivers (RTX 3060 Ti / Ampere support)..."
         $nvidiaDriversDir = Join-Path $scriptPath "drivers\nvidia"
         if (Test-Path $nvidiaDriversDir) {
-            Write-Host "Found NVIDIA driver package at: $nvidiaDriversDir"
-            Write-Host "Injecting drivers into WinPE image (this may take a moment)..."
-            Dism /Add-Driver /Image:"$mountDir" /Driver:"$nvidiaDriversDir" /Recurse /ForceUnsigned | Out-Host
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "NVIDIA GPU drivers injected (RTX 3060 Ti / Ampere support enabled)"
+            # Enumerate .sys files outside the test/ subdirectory
+            $realSysFiles = Get-ChildItem -Path $nvidiaDriversDir -Recurse -Filter "*.sys" -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch [regex]::Escape([IO.Path]::DirectorySeparatorChar + 'test' + [IO.Path]::DirectorySeparatorChar) }
+
+            if ($realSysFiles) {
+                Write-Host "Found real NVIDIA driver binaries:"
+                $realSysFiles | ForEach-Object { Write-Host "  $($_.FullName)" }
+                Write-Host "Injecting drivers into WinPE image (this may take a moment)..."
+                Dism /Add-Driver /Image:"$mountDir" /Driver:"$nvidiaDriversDir" /Recurse /ForceUnsigned | Out-Host
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "NVIDIA GPU drivers injected (RTX 3060 Ti / Ampere support enabled)"
+                } else {
+                    Write-Warning "NVIDIA driver injection returned exit code: $LASTEXITCODE"
+                    Write-Warning "RTX 3060 Ti may fall back to basic VGA mode in WinPE"
+                }
             } else {
-                Write-Warning "NVIDIA driver injection returned exit code: $LASTEXITCODE"
-                Write-Warning "RTX 3060 Ti may fall back to basic VGA mode in WinPE"
+                Write-Warning "No real NVIDIA driver binaries (.sys) found outside test/ — skipping injection."
+                Write-Warning "The test/ subdirectory contains a CI stub only (fictitious HW IDs, no kernel binary)."
+                Write-Host ""
+                Write-Host "  To add real NVIDIA driver support:" -ForegroundColor Yellow
+                Write-Host "  1. Download the matching NVIDIA display driver (Game Ready / Studio DCH):"
+                Write-Host "     https://www.nvidia.com/Download/index.aspx"
+                Write-Host "  2. Self-extract the installer (run it and cancel, or use 7-Zip)."
+                Write-Host "  3. Copy the Display.Driver sub-folder (INF, CAT, SYS files) to:"
+                Write-Host "     $nvidiaDriversDir"
+                Write-Host "  4. Re-run this script to rebuild with driver support."
+                Write-Host ""
+                Write-Host "  WinPE will use the Microsoft Basic Display Adapter until real drivers are added."
+                Write-Host "  Basic VGA is fully functional for the Nightmare OS web desktop."
+                Write-Host ""
             }
         } else {
-            Write-Warning "No NVIDIA driver package found at: $nvidiaDriversDir"
-            Write-Warning "RTX 3060 Ti and other Ampere GPUs will use the basic VGA driver in WinPE."
-            Write-Host ""
-            Write-Host "  To add NVIDIA driver support:" -ForegroundColor Yellow
-            Write-Host "  1. Download the matching NVIDIA display driver (Game Ready / Studio DCH):"
-            Write-Host "     https://www.nvidia.com/Download/index.aspx"
-            Write-Host "  2. Self-extract the installer (run it and cancel, or use 7-Zip)."
-            Write-Host "  3. Copy the Display.Driver sub-folder (INF, CAT, SYS files) to:"
-            Write-Host "     $nvidiaDriversDir"
-            Write-Host "  4. Re-run this script to rebuild with driver support."
-            Write-Host ""
+            Write-Warning "No NVIDIA driver directory found at: $nvidiaDriversDir"
         }
     }
 
@@ -622,22 +639,27 @@ if ($CreateISO) {
 
         try {
             # Build oscdimg command based on available boot files
+            # -n  = allow long filenames (>8.3) in ISO9660 layer — required for BIOS boot
+            # -m  = ignore maximum image size limit
+            # -o  = optimize storage by encoding duplicate files once
+            # -u2 = produce UDF 2.0 file system (UEFI reads UDF; BIOS reads ISO9660)
+            # -udfver102 = set UDF revision to 1.02 for maximum firmware compatibility
             if ($etfsboot -and $efisys) {
                 # Both BIOS and UEFI boot
                 $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
-                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($efisys) {
                 # UEFI boot only
                 $bootData = "2#pEF,e,b`"$efisys`""
-                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } elseif ($etfsboot) {
                 # BIOS boot only
                 $bootData = "1#p0,e,b`"$etfsboot`""
-                & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
+                & $oscdimgPath -n -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$isoPath"
             } else {
                 # No boot files - create data-only ISO
                 Write-Warning "No boot files found - creating non-bootable ISO"
-                & $oscdimgPath -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
+                & $oscdimgPath -n -m -o -u2 -udfver102 "$mediaDir" "$isoPath"
             }
 
             if ($LASTEXITCODE -eq 0) {
