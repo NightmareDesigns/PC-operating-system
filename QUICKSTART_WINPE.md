@@ -39,7 +39,7 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 ### Step 3: Create Bootable Media
 
-**Option A: Bootable USB**
+**Option A: Bootable USB (Windows — PowerShell)**
 
 1. Insert USB drive (will be erased!)
 2. Note the drive letter (e.g., E:)
@@ -51,7 +51,42 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 4. Wait for completion (5-10 minutes)
 5. Safely eject USB drive
 
-**Option B: Bootable ISO**
+**Option B: Bootable USB (Linux — [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader))**
+
+Nightmare Loader is a multi-boot USB creator that supports UEFI and legacy BIOS.
+It auto-detects Windows PE ISOs and generates the correct GRUB2 menu entry.
+
+1. First build the ISO (skip if you already have it):
+   ```powershell
+   .\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true
+   ```
+   Or download `NightmareOS-PE.iso` from the [CI artifact](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-winpe-iso.yml).
+
+2. On a Linux machine, install Nightmare Loader:
+   ```bash
+   pip install nightmare-loader
+   # install system dependencies (Debian/Ubuntu)
+   sudo apt install grub2-common grub-pc-bin grub-efi-amd64-bin parted dosfstools
+   ```
+
+3. Find your USB drive letter (e.g. `/dev/sdb`):
+   ```bash
+   nightmare-loader drives
+   ```
+
+4. Prepare the drive (**⚠ erases all data ⚠**):
+   ```bash
+   sudo nightmare-loader prepare /dev/sdb
+   ```
+
+5. Add the NightmareOS ISO:
+   ```bash
+   sudo nightmare-loader add /dev/sdb NightmareOS-PE.iso --label "Nightmare OS"
+   ```
+
+6. Safely eject and boot — GRUB will present the Nightmare OS entry on both UEFI and legacy BIOS systems.
+
+**Option C: Bootable ISO**
 
 1. Build with ISO creation enabled:
    ```powershell
@@ -85,10 +120,11 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 **On Physical Machine:**
 1. Burn ISO to DVD using Windows built-in burner
-2. Or create USB from ISO using [Rufus](https://rufus.ie)
-3. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
-4. Boot from DVD/USB
-5. Nightmare OS starts automatically
+2. Or create USB from ISO using [Rufus](https://rufus.ie) (Windows)
+3. Or use [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) (Linux) — see Option B above
+4. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
+5. Boot from DVD/USB
+6. Nightmare OS starts automatically
 
 ## What Happens on Boot
 
