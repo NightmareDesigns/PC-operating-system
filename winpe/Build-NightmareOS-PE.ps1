@@ -392,28 +392,55 @@ Write-Step "Creating Windows PE working directory..."
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\Oscdimg"
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
 
-# Use copype.cmd to create base WinPE structure
-$copypePath = Find-CopypePath -winPeRoot $winPEPath -arch $Architecture
-if (-not $copypePath) {
-    Write-Error "copype.cmd not found. Checked: $winPEPath\copype.cmd and filesystem search."
-    Write-Host "Ensure the Windows PE add-on is fully installed (windows-adk-winpe)."
+# Build the WinPE working directory structure in pure PowerShell.
+# This replicates exactly what copype.cmd does (copy Media\, fwfiles\, winpe.wim)
+# without relying on cmd.exe — eliminating all %~dp0 resolution issues that
+# occur when the ADK path contains spaces ("C:\Program Files (x86)\...").
+$archPESourceDir = Join-Path $winPEPath $Architecture
+Write-Host "WinPE source directory: $archPESourceDir"
+
+# List contents of the architecture source directory for diagnostics
+Get-ChildItem -Path $archPESourceDir -ErrorAction SilentlyContinue |
+    ForEach-Object { Write-Host "  $($_.Name)" }
+
+$mediaSrc  = Join-Path $archPESourceDir "Media"
+$fwSrc     = Join-Path $archPESourceDir "fwfiles"
+$winpewim  = Join-Path $archPESourceDir "winpe.wim"
+
+if (-not (Test-Path $mediaSrc)) {
+    Write-Error "WinPE Media directory not found: $mediaSrc"
+    Write-Host "The Windows PE add-on may be partially installed."
+    exit 1
+}
+if (-not (Test-Path $winpewim)) {
+    Write-Error "winpe.wim not found: $winpewim"
+    Write-Host "The Windows PE add-on may be partially installed."
     exit 1
 }
 
-Write-Host "copype.cmd path: $copypePath"
-Write-Host "Running: copype.cmd $Architecture $WorkDir"
-# Invoke using the full path via PowerShell's & operator.
-# PowerShell runs .cmd files as: cmd.exe /c "<fullpath>" arg1 arg2
-# This sets %0 to the fully-qualified path, so %~dp0 inside copype.cmd
-# correctly resolves to the WinPE directory — even when the path contains
-# spaces (e.g. "C:\Program Files (x86)\Windows Kits\...").
-& $copypePath $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
-$copypeExit = $LASTEXITCODE
+Write-Host "Copying WinPE media structure to $WorkDir ..."
 
-if ($copypeExit -ne 0) {
-    Write-Error "Failed to create WinPE working directory"
-    exit 1
+# 1. Copy the bootable media tree (ETL, efisys.bin, etc.)
+$mediaDest = Join-Path $WorkDir "Media"
+Copy-Item -Path $mediaSrc -Destination $mediaDest -Recurse -Force -ErrorAction Stop
+
+# 2. Copy firmware files if present (UEFI + BIOS boot files: efisys.bin, etc.)
+if (Test-Path $fwSrc) {
+    $fwDest = Join-Path $WorkDir "fwfiles"
+    Copy-Item -Path $fwSrc -Destination $fwDest -Recurse -Force -ErrorAction Stop
 }
+
+# 3. Copy winpe.wim → <WorkDir>\Media\sources\boot.wim (standard WinPE convention)
+$bootWimDest = Join-Path $WorkDir "Media\sources\boot.wim"
+$bootWimDir  = Split-Path $bootWimDest -Parent
+# The sources\ directory is normally part of the Media tree copied in step 1.
+# Create it explicitly as a safety net in case the ADK media tree is non-standard.
+if (-not (Test-Path $bootWimDir)) {
+    Write-Host "Note: creating Media\sources\ (not found in Media tree)"
+    New-Item -ItemType Directory -Path $bootWimDir -Force | Out-Null
+}
+Copy-Item -Path $winpewim -Destination $bootWimDest -Force -ErrorAction Stop
+
 Write-Success "WinPE working directory created: $WorkDir"
 
 # Mount the WinPE image
