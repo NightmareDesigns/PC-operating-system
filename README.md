@@ -291,11 +291,9 @@ Don't have a Windows PC?  GitHub Actions can build the ISO for you automatically
 ### Important Limitations
 
 ⚠️ **Persistence**: By default, data is stored in RAM and lost on reboot
-   - **Solution**: Create a second partition on USB for persistence - see [Persistence Guide](PERSISTENCE_GUIDE.md)
-   - With persistence enabled, settings, bookmarks, todos, and other data survive reboots!
+   - **Solution**: Create a second NTFS partition on your USB labelled `NightmareOS-Data` — the Edge profile (localStorage, history, todos, notes) is stored there automatically on every boot — see [Persistence Guide](PERSISTENCE_GUIDE.md)
 
-⚠️ **72-hour limit**: Windows PE automatically reboots after 72 hours
-⚠️ **Limited drivers**: Basic hardware support only (most modern hardware works)
+⚠️ **Limited drivers**: Basic hardware support only (Nvidia RTX 3060 Ti supported — see build guide)
 ⚠️ **Temporary system files**: Windows PE system files are always in RAM
 
 ### Use Cases

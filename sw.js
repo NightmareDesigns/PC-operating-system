@@ -66,6 +66,7 @@ const APP_SHELL = [
   '/js/apps/habittracker.js',
   '/js/apps/systeminfo.js',
   '/js/apps/tiktokstudio.js',
+  '/js/apps/tabby.js',
 ];
 
 /* ── Install: cache app shell ──────────────────────────────────────── */
