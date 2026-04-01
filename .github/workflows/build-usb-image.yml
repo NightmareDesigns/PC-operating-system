@@ -1,0 +1,175 @@
+name: Build NightmareOS USB Image
+
+# =============================================================================
+# This workflow produces a NightmareOS-USB.img.gz artifact — a bootable raw
+# disk image created from the NightmareOS-PE.iso using Nightmare Loader.
+#
+# Users can flash it directly to a USB drive with dd, Rufus, or Balena Etcher.
+#
+# Nightmare Loader uses GRUB2 loopback to boot the ISO on both UEFI and
+# legacy BIOS, so the resulting USB works on any PC.
+# https://github.com/NightmareDesigns/Nightmare-loader
+# =============================================================================
+
+on:
+  # ① Manual trigger – run after downloading the latest successful ISO build
+  workflow_dispatch:
+
+  # ② Automatic – runs whenever the ISO build workflow completes successfully
+  #    on the main branch (tag pushes included via the ISO workflow's trigger)
+  workflow_run:
+    workflows: ["Build Nightmare OS WinPE ISO"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions:  read   # needed to download artifacts from another workflow run
+
+concurrency:
+  group: usb-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  create-usb-image:
+    name: Create USB Image (amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Only run when the triggering ISO build was successful (or on manual dispatch)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      # ── 1. Checkout (needed for Create-USB-Image.sh) ──────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Install system dependencies + Nightmare Loader ─────────────────
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            grub2-common grub-pc-bin grub-efi-amd64-bin \
+            parted dosfstools genisoimage
+          pip3 install --quiet nightmare-loader
+          nightmare-loader --version || true
+
+      # ── 3a. Download ISO (triggered automatically by ISO build workflow) ───
+      - name: Download ISO artifact (from triggering ISO build)
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: NightmareOS-PE-ISO-*
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: iso-download
+          merge-multiple: true
+
+      # ── 3b. Download ISO (manual dispatch – use latest successful build) ───
+      - name: Download ISO artifact (latest successful build, manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Finding latest successful 'Build Nightmare OS WinPE ISO' run..."
+          RUN_ID=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow build-winpe-iso.yml \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]]; then
+            echo "::error::No successful ISO build run found."
+            echo "::error::Run 'Build Nightmare OS WinPE ISO' first, then re-trigger this workflow."
+            exit 1
+          fi
+
+          echo "Downloading ISO from run ID: $RUN_ID"
+          gh run download "$RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --pattern 'NightmareOS-PE-ISO-*' \
+            --dir iso-download
+
+      # ── 4. Locate the downloaded ISO ──────────────────────────────────────
+      - name: Locate ISO file
+        id: iso
+        run: |
+          ISO=$(find iso-download -name "*.iso" | head -1)
+          if [[ -z "$ISO" ]]; then
+            echo "::error::No .iso file found in downloaded artifact."
+            exit 1
+          fi
+          SIZE_MB=$(du -m "$ISO" | cut -f1)
+          echo "path=$ISO"         >> "$GITHUB_OUTPUT"
+          echo "size_mb=$SIZE_MB"  >> "$GITHUB_OUTPUT"
+          echo "Found ISO: $ISO  ($SIZE_MB MB)"
+
+      # ── 5. Create USB image via Nightmare Loader ──────────────────────────
+      - name: Create bootable USB image
+        run: |
+          chmod +x winpe/Create-USB-Image.sh
+          sudo winpe/Create-USB-Image.sh "${{ steps.iso.outputs.path }}" NightmareOS-USB.img
+
+      # ── 6. Compress image ─────────────────────────────────────────────────
+      - name: Compress USB image
+        id: compress
+        run: |
+          echo "Compressing NightmareOS-USB.img (this may take a minute)..."
+          gzip -9 NightmareOS-USB.img
+          COMPRESSED_MB=$(du -m NightmareOS-USB.img.gz | cut -f1)
+          echo "compressed_mb=$COMPRESSED_MB" >> "$GITHUB_OUTPUT"
+          ls -lh NightmareOS-USB.img.gz
+
+      # ── 7. Upload USB image as artifact ───────────────────────────────────
+      - name: Upload USB image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NightmareOS-USB-Image-${{ github.run_number }}
+          path: NightmareOS-USB.img.gz
+          retention-days: 7
+          if-no-files-found: error
+
+      # ── 8. Job summary ────────────────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        env:
+          RUN_NUM: ${{ github.run_number }}
+          ISO_MB: ${{ steps.iso.outputs.size_mb }}
+          IMG_MB: ${{ steps.compress.outputs.compressed_mb }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## ✅ Nightmare OS USB Image
+
+          | Property | Value |
+          |---|---|
+          | Source ISO | ${ISO_MB} MB |
+          | Compressed image | ${IMG_MB} MB |
+          | Artifact | \`NightmareOS-USB-Image-${RUN_NUM}\` |
+          | Retention | 7 days |
+          | Boot loader | Nightmare Loader (GRUB2 — UEFI + Legacy BIOS) |
+
+          ### How to flash to USB
+
+          1. Scroll to **Artifacts** below and download \`NightmareOS-USB-Image-${RUN_NUM}\`.
+          2. Extract the ZIP to get \`NightmareOS-USB.img.gz\`, then decompress:
+             \`\`\`
+             gunzip NightmareOS-USB.img.gz
+             \`\`\`
+          3. **Linux / macOS** — flash with dd:
+             \`\`\`
+             sudo dd if=NightmareOS-USB.img of=/dev/sdX bs=4M status=progress && sync
+             \`\`\`
+          4. **Windows** — open with [Rufus](https://rufus.ie) or [Balena Etcher](https://etcher.balena.io/).
+          5. Boot the USB — the Nightmare Loader GRUB menu appears automatically on UEFI and Legacy BIOS.
+
+          ### Adding more ISOs later
+
+          \`\`\`bash
+          pip install nightmare-loader
+          sudo nightmare-loader add /dev/sdX another-os.iso --label "Another OS"
+          \`\`\`
+          EOF

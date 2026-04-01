@@ -1,0 +1,64 @@
+; =============================================================================
+; nvtestdisplay.inf
+;
+; TEST STUB DRIVER — NightmareOS WinPE / DISM injection pipeline test
+;
+; PURPOSE
+;   This INF exercises the Dism /Add-Driver /Recurse /ForceUnsigned code path
+;   in Build-NightmareOS-PE.ps1 so that CI can verify driver injection end-to-end
+;   without requiring real proprietary Nvidia binaries.
+;
+; HARDWARE COVERED
+;   FICTITIOUS device only — VEN_DEAD&DEV_BEEF is not assigned to any real
+;   PCI vendor or device.  This guarantees the stub is NEVER matched to real
+;   hardware during PnP enumeration, so it cannot cause a BSOD.
+;
+;   (Previous versions used real RTX 3060 Ti IDs PCI\VEN_10DE&DEV_2489 which
+;   caused SYSTEM_THREAD_EXCEPTION_NOT_HANDLED on boot because PnP matched the
+;   stub to the GPU but no kernel service or .sys binary was present.)
+;
+; IMPORTANT
+;   This file contains NO binary components (.sys, .dll, .cat).
+;   It installs NO kernel service and performs NO CopyFiles operation.
+;   It will NEVER match any real hardware due to the fictitious VEN/DEV IDs.
+;
+;   DO NOT replace the fictitious IDs with real hardware IDs.
+;   DO NOT ship this stub as a production driver.
+; =============================================================================
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = Display
+ClassGuid   = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Provider    = %Provider%
+DriverVer   = 01/01/2000,0.0.0.0
+PnpLockdown = 1
+
+; No CatalogFile= entry.  Build script uses /ForceUnsigned so no catalog is needed.
+
+; -----------------------------------------------------------------------------
+; Manufacturer / hardware-ID table
+; Uses a fictitious VEN_DEAD&DEV_BEEF — never matches real hardware.
+; -----------------------------------------------------------------------------
+[Manufacturer]
+%Provider% = NV_TestStub, NTamd64, NTamd64.10.0...22000
+
+[NV_TestStub.NTamd64]
+%TestStub.DevDesc% = TestStub_Install, PCI\VEN_DEAD&DEV_BEEF
+
+[NV_TestStub.NTamd64.10.0...22000]
+%TestStub.DevDesc% = TestStub_Install, PCI\VEN_DEAD&DEV_BEEF
+
+; -----------------------------------------------------------------------------
+; Install section — stub: no CopyFiles, no registry writes
+; -----------------------------------------------------------------------------
+[TestStub_Install.NT]
+; Intentionally empty — test stub does not copy any driver binaries.
+
+[TestStub_Install.NT.Services]
+; No AddService — stub only.
+
+; -----------------------------------------------------------------------------
+[Strings]
+Provider           = "NightmareOS Driver Test"
+TestStub.DevDesc   = "NightmareOS CI Test Stub (Fictitious Device - Never Matches Real Hardware)"

@@ -7,6 +7,13 @@
     This script writes the Windows PE image to a USB drive, making it bootable.
     WARNING: This will ERASE ALL DATA on the target USB drive!
 
+    NOTE: This script requires Windows ADK (MakeWinPEMedia.cmd).
+    On Linux, use Nightmare Loader instead:
+        pip install nightmare-loader
+        sudo nightmare-loader prepare /dev/sdX
+        sudo nightmare-loader add /dev/sdX NightmareOS-PE.iso --label "Nightmare OS"
+    See: https://github.com/NightmareDesigns/Nightmare-loader
+
 .PARAMETER DriveLetter
     The drive letter of the USB drive (e.g., "E:" or "E")
 
@@ -270,12 +277,17 @@ Write-Host "  • If boot fails, disable Secure Boot in BIOS"
 Write-Host "  • Try different USB ports (prefer USB 2.0 for compatibility)"
 Write-Host "  • Ensure USB boot is enabled in BIOS"
 Write-Host "  • Check boot order in BIOS"
+Write-Host "  • On Linux? Use Nightmare Loader instead:"
+Write-Host "      pip install nightmare-loader"
+Write-Host "      sudo nightmare-loader prepare /dev/sdX"
+Write-Host "      sudo nightmare-loader add /dev/sdX NightmareOS-PE.iso --label `"Nightmare OS`""
+Write-Host "      https://github.com/NightmareDesigns/Nightmare-loader"
 Write-Host ""
 
 Write-Host "Important Notes:" -ForegroundColor Red
-Write-Host "  • All data is stored in RAM (no persistence)"
-Write-Host "  • Changes are lost when you reboot"
-Write-Host "  • Windows PE reboots automatically after 72 hours"
+Write-Host "  • All data is stored in RAM unless a D: persistence partition exists"
+Write-Host "  • Changes are lost on reboot when running in RAM-only mode"
+Write-Host "  • No automatic reboot timer"
 Write-Host "  • Requires 2 GB RAM minimum, 4 GB recommended"
 Write-Host ""
 

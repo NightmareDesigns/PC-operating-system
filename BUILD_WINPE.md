@@ -296,9 +296,8 @@ Edit `startnet.cmd` to change what happens on boot:
 ## Limitations
 
 ### Windows PE Limitations
-- **Maximum session time**: Windows PE automatically reboots after 72 hours
-- **No persistence**: Changes are stored in RAM and lost on reboot
-- **Limited drivers**: Only basic hardware drivers included
+- **No persistence by default**: Changes are stored in RAM and lost on reboot (create a `NightmareOS-Data` NTFS partition on USB to enable persistence)
+- **Limited drivers**: Only basic hardware drivers included (Nvidia RTX 3060 Ti supported via optional driver injection)
 - **No Windows Store**: Cannot install Windows Store apps
 - **No file system changes**: Cannot modify the boot drive (read-only)
 

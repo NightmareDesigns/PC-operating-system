@@ -31,6 +31,12 @@ on:
     tags:
       - 'v*'
 
+  # ③ Build on every pull request that touches WinPE or workflow files
+  pull_request:
+    paths:
+      - '.github/workflows/build-winpe-iso.yml'
+      - 'winpe/**'
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Permissions
 # ──────────────────────────────────────────────────────────────────────────────
@@ -45,250 +51,192 @@ jobs:
   build-winpe-iso:
     name: Build WinPE ISO (${{ github.event.inputs.architecture || 'amd64' }})
     runs-on: windows-latest
-    # ADK download + install takes ~20-30 min on a cache miss;
-    # ~5-10 min on a cache hit.  Build itself is ~5 min.
     timeout-minutes: 90
 
     env:
-      WORK_DIR:         C:\WinPE_NightmareOS
-      ADK_LAYOUT_DIR:   C:\ADK-Layout
-      ADK_PE_LAYOUT_DIR: C:\ADK-PE-Layout
-      # Official redirect URLs for Windows 11 24H2 ADK and WinPE add-on.
-      # If Microsoft changes the links, update these and bump ADK_CACHE_KEY.
-      ADK_URL:    "https://go.microsoft.com/fwlink/?linkid=2289980"
-      ADK_PE_URL: "https://go.microsoft.com/fwlink/?linkid=2289981"
-      # Bump the version suffix to force a fresh ADK download.
-      ADK_CACHE_KEY: "windows-adk-win11-layout-v2"
+      WORK_DIR: C:\WinPE_NightmareOS
 
     steps:
       # ── 1. Checkout ───────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Restore ADK offline-layout cache ──────────────────────────────
+      # ── 2. Install Windows ADK + WinPE Add-on ────────────────────────────
       #
-      # The layout directories hold all installer packages for:
-      #   • Windows ADK  → OptionId.DeploymentTools (~700 MB)
-      #   • WinPE Add-on → OptionId.WindowsPreinstallationEnvironment (~1.5 GB)
-      #
-      # Caching them saves 20-30 min on every non-first run.
-      - name: Restore ADK layout cache
-        id: cache-adk
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.ADK_LAYOUT_DIR }}
-            ${{ env.ADK_PE_LAYOUT_DIR }}
-          key: ${{ env.ADK_CACHE_KEY }}
-
-      # ── 3. Detect if ADK is already on this runner ───────────────────────────
-      #
-      # windows-latest (Windows Server 2025) ships with a recent ADK build.
-      # If the required components are already present we skip every download
-      # and install step, saving 20-30 min and avoiding the version-conflict
-      # exit code 1001 that the older setup EXEs return when a newer ADK is
-      # already installed.
-      - name: Check if Windows ADK is already installed
-        id: adk-check
+      # Strategy:
+      #   a) Try Chocolatey (fast, handles version conflicts).
+      #      The windows-adk-winpe Chocolatey package is sometimes marked
+      #      "Likely broken for FOSS users" — it may install copype.cmd but
+      #      omit the architecture-specific PE files (amd64\winpe.wim, etc.)
+      #      that copype.cmd needs to build a working directory.
+      #   b) After both Chocolatey installs, verify the architecture-specific
+      #      WinPE content directory exists (amd64\ with winpe.wim or WinPE_OCs).
+      #   c) If missing, fall back to a direct online install via the official
+      #      Microsoft fwlink (adkwinpesetup.exe /quiet online mode).
+      - name: Install Windows ADK via Chocolatey
+        id: install-adk
         shell: pwsh
         run: |
-          # First, check registry for ADK installation (most reliable method)
-          $regPath = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots"
-          $adkInstalled = $false
+          Write-Host "Installing Windows ADK via Chocolatey..."
+          choco install windows-adk       --no-progress -y 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windows-adk Chocolatey install failed (exit $LASTEXITCODE)"
+            exit 1
+          }
+          choco install windows-adk-winpe --no-progress -y 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "windows-adk-winpe Chocolatey install failed (exit $LASTEXITCODE)"
+            exit 1
+          }
+          Write-Host "✓ Windows ADK + WinPE add-on installed via Chocolatey"
 
-          try {
-            if (Test-Path $regPath) {
-              $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
-              if ($kitsRoot) {
-                $adkRoot = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                $deployTools = Join-Path $adkRoot "Deployment Tools\DandISetEnv.bat"
-                $winPeEnv = Join-Path $adkRoot "Windows Preinstallation Environment"
+          # Verify the architecture-specific WinPE PE files are present.
+          # The Chocolatey windows-adk-winpe package is sometimes "Likely broken
+          # for FOSS users" and installs copype.cmd but omits the amd64\ directory
+          # tree (winpe.wim / WinPE_OCs) that copype.cmd reads from.  Checking
+          # for those files is the correct indicator that the install succeeded.
+          $arch = "${{ github.event.inputs.architecture }}"
+          if ($arch -notin @('amd64','x86')) { $arch = 'amd64' }
 
-                if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-                  Write-Host "✓ Windows ADK found via registry at: $adkRoot"
-                  Write-Host "  - Deployment Tools: $deployTools"
-                  Write-Host "  - WinPE Environment: $winPeEnv"
-                  $adkInstalled = $true
+          # Look for the WinPE root (Windows Preinstallation Environment dir) first.
+          $peSearchRoots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits",
+            "${env:ProgramFiles}\Windows Kits"
+          )
+          $winPERoot = Get-ChildItem $peSearchRoots `
+              -Filter "Windows Preinstallation Environment" -Recurse -Depth 5 `
+              -ErrorAction SilentlyContinue -Directory |
+              Select-Object -First 1 -ExpandProperty FullName
+
+          $archPEOk = $false
+          if ($winPERoot) {
+            $archDir = Join-Path $winPERoot $arch
+            # winpe.wim is required for the build — check amd64\ (older ADK) and
+            # amd64\en-us\ (Windows 11 ADK v10.1.26100+ stores it here).
+            $wimFound = (Test-Path "$archDir\winpe.wim") -or (Test-Path "$archDir\en-us\winpe.wim")
+            if ($wimFound -and (Test-Path "$archDir\WinPE_OCs")) {
+              Write-Host "✓ WinPE $arch architecture files verified at: $archDir"
+              $archPEOk = $true
+            } else {
+              if (-not $wimFound) {
+                Write-Host "⚠ winpe.wim missing from $archDir and $archDir\en-us — fallback required"
+              } else {
+                Write-Host "⚠ WinPE_OCs missing from $archDir — fallback required"
+              }
+            }
+          } else {
+            Write-Host "⚠ Windows Preinstallation Environment directory not found after Chocolatey install"
+          }
+
+          if (-not $archPEOk) {
+            Write-Host "Falling back to direct Microsoft download of WinPE add-on..."
+            # Official Microsoft bootstrapper in online (non-layout) mode.
+            # Does NOT trigger exit 1001 because it is not an offline layout installer.
+            $ADK_PE_URL = "https://go.microsoft.com/fwlink/?linkid=2289981"
+            $peSetup = "$env:TEMP\adkwinpesetup.exe"
+            Write-Host "Downloading WinPE add-on setup (~5 MB)..."
+            Invoke-WebRequest -Uri $ADK_PE_URL -OutFile $peSetup
+            Write-Host "Installing WinPE add-on online..."
+            $peArgs = @(
+              '/features', 'OptionId.WindowsPreinstallationEnvironment',
+              '/quiet', '/norestart', '/ceip', 'off'
+            )
+            $proc = Start-Process -Wait -PassThru $peSetup -ArgumentList $peArgs
+            # 0=success  3010=reboot-pending (CI-safe)  1001=already-installed (treat as success)
+            if ($proc.ExitCode -notin @(0, 3010, 1001)) {
+              Write-Error "WinPE add-on direct install failed (exit $($proc.ExitCode))"
+              exit 1
+            }
+            Write-Host "✓ WinPE add-on installed directly from Microsoft (exit $($proc.ExitCode))"
+          }
+
+      # ── 3. Install xorriso (alternative ISO creator; no ADK dependency) ───
+      #
+      # xorriso creates El Torito bootable ISOs (BIOS + UEFI) independently
+      # of Windows ADK.  Build-NightmareOS-PE.ps1 tries oscdimg first and
+      # falls back to xorriso automatically, so both tools are available.
+      - name: Install xorriso (alternative ISO creator)
+        shell: pwsh
+        run: |
+          Write-Host "Installing xorriso via Chocolatey..."
+          choco install xorriso --no-progress -y 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "⚠ xorriso package not available in Chocolatey (exit $LASTEXITCODE) – build script will use oscdimg from ADK instead"
+          }
+          $xr = Get-Command xorriso -ErrorAction SilentlyContinue
+          if ($xr) {
+            Write-Host "✓ xorriso available at: $($xr.Source)"
+          } else {
+            Write-Host "ℹ xorriso not in PATH – oscdimg from Windows ADK will be used as the primary ISO tool"
+          }
+          # Always succeed: xorriso is an optional fallback; ADK oscdimg is the primary ISO creator
+          exit 0
+
+      # ── 4. Verify ADK installation and show discovered path ──────────────
+      #
+      # Confirms the ADK was installed correctly before the build starts.
+      # Shows the exact paths that Find-ADKPath and Find-OscdimgPath will
+      # use, making CI logs easier to debug if the build step fails.
+      - name: Verify ADK installation
+        shell: pwsh
+        run: |
+          function Find-ADKPath {
+            $regPaths = @(
+              "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+              "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+            )
+            foreach ($rp in $regPaths) {
+              try {
+                if (Test-Path $rp) {
+                  $root = (Get-ItemProperty $rp -ErrorAction SilentlyContinue).KitsRoot10
+                  if ($root) {
+                    $candidate = Join-Path $root "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) { return $candidate }
+                  }
                 }
+              } catch {}
+            }
+            foreach ($p in @(
+              "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+              "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+            )) { if (Test-Path $p) { return $p } }
+            return $null
+          }
+          $adk = Find-ADKPath
+          if ($adk) {
+            Write-Host "✓ ADK found at: $adk"
+            $winpe = Join-Path $adk "Windows Preinstallation Environment"
+            if (Test-Path $winpe) { Write-Host "✓ WinPE add-on present: $winpe" }
+            else { Write-Host "⚠ WinPE add-on NOT found under ADK path (may cause build failure)" }
+            # Check for oscdimg.exe (primary ISO creation tool)
+            # Only check known-valid architectures; fall back to amd64 for non-dispatch triggers.
+            $arch = "${{ github.event.inputs.architecture }}"
+            if ($arch -notin @('amd64','x86')) { $arch = 'amd64' }
+            $oscdimgFound = $false
+            foreach ($a in @($arch, 'amd64', 'x86') | Select-Object -Unique) {
+              $p = Join-Path $adk "Deployment Tools\$a\Oscdimg\oscdimg.exe"
+              if (Test-Path $p) {
+                Write-Host "✓ oscdimg.exe found at: $p"
+                $oscdimgFound = $true
+                break
               }
             }
-          } catch {
-            Write-Host "Registry check failed (non-fatal): $_"
-          }
-
-          # Fallback: check default installation path
-          if (-not $adkInstalled) {
-            $adkRoot     = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
-            $deployTools = "$adkRoot\Deployment Tools\DandISetEnv.bat"
-            $winPeEnv    = "$adkRoot\Windows Preinstallation Environment"
-            if ((Test-Path $deployTools) -and (Test-Path $winPeEnv)) {
-              Write-Host "✓ Windows ADK found at default path: $adkRoot"
-              $adkInstalled = $true
+            if (-not $oscdimgFound) {
+              # Fallback: filesystem search under Windows Kits.
+              # Depth 5 matches the ADK tree: Windows Kits\10\ADK\Deployment Tools\<arch>\Oscdimg\
+              $hit = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits","${env:ProgramFiles}\Windows Kits" `
+                       -Filter oscdimg.exe -Recurse -Depth 5 -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+              if ($hit) { Write-Host "✓ oscdimg.exe found via search: $($hit.FullName)"; $oscdimgFound = $true }
             }
-          }
-
-          if ($adkInstalled) {
-            Write-Host "→ Skipping download/install steps (ADK already present)"
-            echo "installed=true" >> $env:GITHUB_OUTPUT
+            if (-not $oscdimgFound) {
+              Write-Host "⚠ oscdimg.exe NOT found – build will fail at ISO creation step unless xorriso is available"
+            }
           } else {
-            Write-Host "→ ADK not found – will download and install"
-            echo "installed=false" >> $env:GITHUB_OUTPUT
+            Write-Warning "ADK not found via registry or known paths – build script will perform its own search."
           }
 
-      # ── 4. Download layouts (cache miss + not pre-installed only) ────────────
-      - name: Download Windows ADK offline layouts
-        id: download-adk
-        if: steps.cache-adk.outputs.cache-hit != 'true' && steps.adk-check.outputs.installed != 'true'
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          New-Item -ItemType Directory -Path $env:ADK_LAYOUT_DIR    -Force | Out-Null
-          New-Item -ItemType Directory -Path $env:ADK_PE_LAYOUT_DIR -Force | Out-Null
-
-          $adkPreinstalled = $false
-
-          # ---- Windows ADK (Deployment Tools) ----
-          Write-Host "::group::Download Windows ADK layout"
-          $adkSetup = "$env:TEMP\adksetup.exe"
-          Write-Host "Fetching ADK setup (~5 MB)..."
-          Invoke-WebRequest -Uri $env:ADK_URL -OutFile $adkSetup -UseBasicParsing
-          Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
-          $proc = Start-Process -Wait -PassThru $adkSetup `
-              -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
-          if ($proc.ExitCode -eq 1001) {
-              # Exit 1001 means a same or newer version of the ADK Deployment Tools is already
-              # installed on this runner image.  We cannot create a layout for an older version,
-              # but we can use the pre-installed components directly – skip ADK install step.
-              Write-Host "ADK Deployment Tools already installed on runner (exit 1001) – skipping ADK layout."
-              echo "adk_preinstalled=true" >> $env:GITHUB_OUTPUT
-              $adkPreinstalled = $true
-          } elseif ($proc.ExitCode -ne 0) {
-              Write-Error "ADK layout download failed (exit $($proc.ExitCode))"
-              exit 1
-          } else {
-              # Ensure the bootstrapper is in the layout dir for later offline install
-              if (-not (Test-Path "$env:ADK_LAYOUT_DIR\adksetup.exe")) {
-                  Copy-Item $adkSetup "$env:ADK_LAYOUT_DIR\adksetup.exe" -Force
-              }
-          }
-          Write-Host "::endgroup::"
-
-          # ---- Windows PE Add-on ----
-          # Always attempt the WinPE layout even if ADK was pre-installed: the WinPE Add-on
-          # is a separate installer and is often absent from runner images even when the ADK
-          # Deployment Tools component is present.
-          Write-Host "::group::Download Windows PE Add-on layout"
-          $peSetup = "$env:TEMP\adkwinpesetup.exe"
-          Write-Host "Fetching WinPE add-on setup (~5 MB)..."
-          Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $peSetup -UseBasicParsing
-          Write-Host "Downloading Windows PE layout (~1.5 GB)..."
-          $proc = Start-Process -Wait -PassThru $peSetup `
-              -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
-          if ($proc.ExitCode -eq 1001) {
-              Write-Host "WinPE Add-on already installed on runner (exit 1001) – skipping WinPE layout."
-              echo "winpe_preinstalled=true" >> $env:GITHUB_OUTPUT
-          } elseif ($proc.ExitCode -ne 0) {
-              Write-Error "WinPE layout download failed (exit $($proc.ExitCode))"
-              exit 1
-          } else {
-              if (-not (Test-Path "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe")) {
-                  Copy-Item $peSetup "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe" -Force
-              }
-          }
-          Write-Host "::endgroup::"
-          if (-not $adkPreinstalled) { Write-Host "Both ADK layouts ready." }
-
-      # ── 5. Install ADK Deployment Tools ───────────────────────────────────
-      #
-      # Runs whenever adk-check did not confirm a full ADK installation.
-      # If the offline layout is present (cache hit or successful download) it
-      # installs from the layout; otherwise it falls back to a direct online
-      # install using the bootstrapper that was already downloaded to TEMP.
-      # This handles the case where the layout download returns exit 1001
-      # (e.g. Windows SDK sharing the KitsRoot10 registry key confuses the
-      # ADK installer into thinking a full ADK is already present, even though
-      # the Assessment and Deployment Kit directory does not exist).
-      - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
-        shell: pwsh
-        run: |
-          Write-Host "::group::Install ADK Deployment Tools"
-          $layoutSetup = "$env:ADK_LAYOUT_DIR\adksetup.exe"
-          $tempSetup   = "$env:TEMP\adksetup.exe"
-
-          if (Test-Path $layoutSetup) {
-              $setup = $layoutSetup
-              Write-Host "Installing from offline layout: $setup"
-          } elseif (Test-Path $tempSetup) {
-              $setup = $tempSetup
-              Write-Host "Layout not available – falling back to online install: $setup"
-          } else {
-              Write-Host "Bootstrapper not found; re-downloading for online install..."
-              Invoke-WebRequest -Uri $env:ADK_URL -OutFile $tempSetup -UseBasicParsing
-              $setup = $tempSetup
-          }
-
-          $logFile = "C:\adk-deploy.log"
-          $proc = Start-Process -Wait -PassThru $setup `
-              -ArgumentList "/features OptionId.DeploymentTools /quiet /norestart /log `"$logFile`""
-          # 0    = success
-          # 3010 = success, reboot pending (safe to ignore in CI)
-          # 1001 = same or newer version already installed (treat as success)
-          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
-              Write-Error "ADK Deployment Tools install failed (exit $($proc.ExitCode)). Last 50 log lines:"
-              Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
-              exit 1
-          }
-          if ($proc.ExitCode -eq 1001) {
-              Write-Host "ADK Deployment Tools already installed (exit 1001) – continuing."
-          } else {
-              Write-Host "ADK Deployment Tools installed successfully."
-          }
-          Write-Host "::endgroup::"
-
-      # ── 6. Install WinPE Add-on ────────────────────────────────────────────
-      #
-      # Same fallback logic as step 5 – uses offline layout when available,
-      # otherwise falls back to a direct online install.
-      - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
-        shell: pwsh
-        run: |
-          Write-Host "::group::Install Windows PE Add-on"
-          $layoutSetup = "$env:ADK_PE_LAYOUT_DIR\adkwinpesetup.exe"
-          $tempSetup   = "$env:TEMP\adkwinpesetup.exe"
-
-          if (Test-Path $layoutSetup) {
-              $setup = $layoutSetup
-              Write-Host "Installing from offline layout: $setup"
-          } elseif (Test-Path $tempSetup) {
-              $setup = $tempSetup
-              Write-Host "Layout not available – falling back to online install: $setup"
-          } else {
-              Write-Host "Bootstrapper not found; re-downloading for online install..."
-              Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $tempSetup -UseBasicParsing
-              $setup = $tempSetup
-          }
-
-          $logFile = "C:\adk-winpe.log"
-          $proc = Start-Process -Wait -PassThru $setup `
-              -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /log `"$logFile`""
-          # 0    = success
-          # 3010 = success, reboot pending (safe to ignore in CI)
-          # 1001 = same or newer version already installed (treat as success)
-          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010 -and $proc.ExitCode -ne 1001) {
-              Write-Error "WinPE Add-on install failed (exit $($proc.ExitCode)). Last 50 log lines:"
-              Get-Content $logFile -ErrorAction SilentlyContinue | Select-Object -Last 50
-              exit 1
-          }
-          if ($proc.ExitCode -eq 1001) {
-              Write-Host "WinPE Add-on already installed (exit 1001) – continuing."
-          } else {
-              Write-Host "Windows PE Add-on installed successfully."
-          }
-          Write-Host "::endgroup::"
-
-      # ── 7. Build Nightmare OS WinPE ISO ───────────────────────────────────
+      # ── 5. Build Nightmare OS WinPE ISO ───────────────────────────────────
       - name: Build Nightmare OS WinPE ISO
         shell: pwsh
         run: |
@@ -301,12 +249,13 @@ jobs:
           Write-Host "WorkDir       : $env:WORK_DIR"
 
           .\winpe\Build-NightmareOS-PE.ps1 `
-              -Architecture  $arch `
-              -CreateISO     $true `
-              -WorkDir       $env:WORK_DIR `
-              -IncludePython $incPython
+              -Architecture        $arch `
+              -CreateISO           $true `
+              -WorkDir             $env:WORK_DIR `
+              -IncludePython       $incPython `
+              -IncludeNvidiaDrivers $true
 
-      # ── 8. Verify ISO ──────────────────────────────────────────────────────
+      # ── 6. Verify ISO ──────────────────────────────────────────────────────
       - name: Verify ISO and collect metadata
         id: iso-meta
         shell: pwsh
@@ -322,7 +271,7 @@ jobs:
           echo "iso_path=$($iso.FullName)" >> $env:GITHUB_OUTPUT
           echo "iso_size_mb=$sizeMB"       >> $env:GITHUB_OUTPUT
 
-      # ── 9. Upload ISO as workflow artifact ───────────────────────────────
+      # ── 7. Upload ISO as workflow artifact ───────────────────────────────
       #
       # After the run, go to:
       #   Actions → this run → Artifacts (bottom of the page)
@@ -336,7 +285,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      # ── 10. Attach ISO to GitHub Release (tag builds only) ─────────────────
+      # ── 8. Attach ISO to GitHub Release (tag builds only) ─────────────────
       - name: Attach ISO to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -357,7 +306,7 @@ jobs:
             | **USB (Rufus)** | Open [Rufus](https://rufus.ie), select ISO, write to USB |
             | **DVD** | Right-click ISO → *Burn disc image* |
 
-      # ── 11. Job summary ────────────────────────────────────────────────────
+      # ── 9. Job summary ────────────────────────────────────────────────────
       - name: Write job summary
         if: always()
         shell: pwsh
@@ -395,6 +344,7 @@ jobs:
           | **VMware** | New VM wizard → attach ISO → Power On |
           | **Hyper-V** | New VM → DVD settings → attach ISO → Start |
           | **USB (Rufus)** | [rufus.ie](https://rufus.ie) – select ISO, GPT/UEFI, click START |
+          | **USB (Nightmare Loader)** | CI auto-produces a flashable ``NightmareOS-USB-Image-*`` artifact via the [Build NightmareOS USB Image](../workflows/build-usb-image.yml) workflow |
           | **DVD** | Right-click ISO → *Burn disc image* |
 
           ### To build again

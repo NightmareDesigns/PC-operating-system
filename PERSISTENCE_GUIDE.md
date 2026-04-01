@@ -248,7 +248,6 @@ Persistence has minimal performance impact:
 ## Limitations
 
 ⚠️ **Windows PE Limitations Still Apply**:
-- 72-hour automatic reboot
 - No Windows Update
 - Limited driver support
 - RAM-based system files
@@ -273,7 +272,6 @@ Persistence has minimal performance impact:
 2. ✅ **Test Persistence**: Verify after USB creation
 3. ✅ **Partition Size**: Allocate 4-8 GB for data
 4. ✅ **Safe Shutdown**: Use "Shutdown" not hard power off
-5. ✅ **Avoid 72hr Limit**: Reboot before auto-reboot
 
 ## Comparison: With vs Without Persistence
 

@@ -39,7 +39,7 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 ### Step 3: Create Bootable Media
 
-**Option A: Bootable USB**
+**Option A: Bootable USB (Windows — PowerShell)**
 
 1. Insert USB drive (will be erased!)
 2. Note the drive letter (e.g., E:)
@@ -51,7 +51,55 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 4. Wait for completion (5-10 minutes)
 5. Safely eject USB drive
 
-**Option B: Bootable ISO**
+**Option B: Pre-built USB Image from CI (easiest — no tools needed)**
+
+The CI automatically produces a ready-to-flash `.img.gz` USB image after every successful ISO build.
+
+1. Go to the [**Build NightmareOS USB Image**](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-usb-image.yml) workflow.
+2. Click the most recent successful run → download the `NightmareOS-USB-Image-*` artifact.
+3. Extract the ZIP, then decompress: `gunzip NightmareOS-USB.img.gz`
+4. Flash to your USB drive:
+   - **Linux / macOS**: `sudo dd if=NightmareOS-USB.img of=/dev/sdX bs=4M status=progress && sync`
+   - **Windows**: open with [Rufus](https://rufus.ie) or [Balena Etcher](https://etcher.balena.io/)
+5. Boot the USB — GRUB2 menu appears automatically on both UEFI and legacy BIOS.
+
+**Option C: Bootable USB (Linux — [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) on your own machine)**
+
+Nightmare Loader is a multi-boot USB creator that supports UEFI and legacy BIOS.
+It auto-detects Windows PE ISOs and generates the correct GRUB2 menu entry.
+
+1. First build the ISO (skip if you already have it):
+   ```powershell
+   .\winpe\Build-NightmareOS-PE.ps1 -CreateISO $true
+   ```
+   Or download `NightmareOS-PE.iso` from the [CI artifact](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-winpe-iso.yml).
+
+2. On a Linux machine, install Nightmare Loader and system dependencies (Debian/Ubuntu):
+   ```bash
+   pip install nightmare-loader
+   sudo apt install grub2-common grub-pc-bin grub-efi-amd64-bin parted dosfstools
+   ```
+
+3. Find your USB drive (e.g. `/dev/sdb`):
+   ```bash
+   nightmare-loader drives
+   ```
+
+4. **Option C1 — use the helper script** (automatically sizes the image and runs Nightmare Loader):
+   ```bash
+   sudo ./winpe/Create-USB-Image.sh NightmareOS-PE.iso NightmareOS-USB.img
+   sudo dd if=NightmareOS-USB.img of=/dev/sdb bs=4M status=progress && sync
+   ```
+
+5. **Option C2 — write directly to USB** (⚠ erases all data on the drive ⚠):
+   ```bash
+   sudo nightmare-loader prepare /dev/sdb
+   sudo nightmare-loader add /dev/sdb NightmareOS-PE.iso --label "Nightmare OS"
+   ```
+
+6. Safely eject and boot — GRUB will present the Nightmare OS entry on both UEFI and legacy BIOS systems.
+
+**Option D: Bootable ISO**
 
 1. Build with ISO creation enabled:
    ```powershell
@@ -85,10 +133,11 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 **On Physical Machine:**
 1. Burn ISO to DVD using Windows built-in burner
-2. Or create USB from ISO using [Rufus](https://rufus.ie)
-3. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
-4. Boot from DVD/USB
-5. Nightmare OS starts automatically
+2. Or create USB from ISO using [Rufus](https://rufus.ie) (Windows)
+3. Or use [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) (Linux) — see Option C above
+4. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
+5. Boot from DVD/USB
+6. Nightmare OS starts automatically
 
 ## What Happens on Boot
 
@@ -105,9 +154,9 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
    - Changes are lost when you reboot
    - Files you create are temporary
    - Settings don't save between boots
-   - **NEW**: You can enable persistence! See [Persistence Guide](PERSISTENCE_GUIDE.md) to make data survive reboots
+   - **Enable persistence**: Create a second NTFS partition on your USB labelled `NightmareOS-Data` — Edge profile (localStorage, history, notes) will be stored there automatically
 
-⚠ **72 Hour Limit**: Windows PE reboots automatically after 72 hours
+⚠ **No automatic reboot timer** — sessions run indefinitely
 
 ⚠ **RAM Usage**: Runs entirely in RAM
    - Minimum: 2 GB RAM
@@ -121,6 +170,10 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 ## Troubleshooting
 
 ### Boot Problems
+
+**SYSTEM_THREAD_EXCEPTION_NOT_HANDLED (Blue Screen) on boot:**
+This BSOD was caused by a CI test driver stub that had real RTX 3060 Ti hardware IDs being injected into the WinPE image. It is fixed in the current build.
+Download the latest ISO from the **[Build Nightmare OS WinPE ISO](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-winpe-iso.yml)** workflow — click the most recent successful run, then download the `NightmareOS-PE-ISO-*` artifact.
 
 **USB doesn't boot:**
 - Disable Secure Boot in BIOS
