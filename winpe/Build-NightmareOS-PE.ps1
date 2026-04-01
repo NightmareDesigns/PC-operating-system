@@ -306,49 +306,61 @@ try {
     # Add optional packages
     Write-Step "Adding Windows PE optional components..."
 
-    $packages = @(
-        "WinPE-WMI.cab",
-        "WinPE-NetFx.cab",
-        "WinPE-Scripting.cab",
-        "WinPE-PowerShell.cab",
-        "WinPE-StorageWMI.cab",
-        "WinPE-DismCmdlets.cab",
-        "WinPE-HTA.cab"         # HTML Application host — required for Edge kiosk rendering compatibility
+    # Packages in dependency order: each entry is [base-package, en-us-language-pack].
+    # Language packs are installed immediately after their base package.
+    # Dependency notes:
+    #   WinPE-NetFx requires WinPE-WMI
+    #   WinPE-PowerShell requires WinPE-WMI, WinPE-NetFx, WinPE-Scripting
+    #   WinPE-StorageWMI / WinPE-DismCmdlets require WinPE-WMI, WinPE-NetFx, WinPE-PowerShell
+    #   WinPE-SecureStartup requires WinPE-EnhancedStorage
+    $packagePairs = @(
+        @("WinPE-WMI.cab",             "en-us\WinPE-WMI_en-us.cab"),
+        @("WinPE-NetFx.cab",           "en-us\WinPE-NetFx_en-us.cab"),
+        @("WinPE-Scripting.cab",       "en-us\WinPE-Scripting_en-us.cab"),
+        @("WinPE-PowerShell.cab",      "en-us\WinPE-PowerShell_en-us.cab"),
+        @("WinPE-StorageWMI.cab",      "en-us\WinPE-StorageWMI_en-us.cab"),
+        @("WinPE-DismCmdlets.cab",     "en-us\WinPE-DismCmdlets_en-us.cab"),
+        @("WinPE-EnhancedStorage.cab", "en-us\WinPE-EnhancedStorage_en-us.cab"),
+        @("WinPE-Dot3Svc.cab",         "en-us\WinPE-Dot3Svc_en-us.cab"),
+        @("WinPE-SecureStartup.cab",   "en-us\WinPE-SecureStartup_en-us.cab"),
+        @("WinPE-HTA.cab",             "en-us\WinPE-HTA_en-us.cab")
     )
 
     $packagesPath = "$winPEPath\$Architecture\WinPE_OCs"
 
-    foreach ($package in $packages) {
-        $packagePath = "$packagesPath\$package"
-        if (Test-Path $packagePath) {
-            Write-Host "Adding package: $package"
-            Dism /Add-Package /Image:"$mountDir" /PackagePath:"$packagePath" | Out-Host
-            Write-Success "Added $package"
-        } else {
-            Write-Warning "Package not found: $package"
+    foreach ($pair in $packagePairs) {
+        foreach ($rel in $pair) {
+            $pkgPath = "$packagesPath\$rel"
+            if (Test-Path $pkgPath) {
+                Write-Host "Adding: $rel"
+                Dism /Add-Package /Image:"$mountDir" /PackagePath:"$pkgPath" | Out-Host
+                Write-Success "Added $rel"
+            } else {
+                Write-Warning "Package not found (skipping): $rel"
+            }
         }
     }
 
-    # Inject Nvidia GPU drivers for RTX 3060 Ti / Ampere architecture support
+    # Inject NVIDIA GPU drivers for RTX 3060 Ti / Ampere architecture support
     if ($IncludeNvidiaDrivers) {
-        Write-Step "Checking for Nvidia GPU drivers (RTX 3060 Ti / Ampere support)..."
+        Write-Step "Checking for NVIDIA GPU drivers (RTX 3060 Ti / Ampere support)..."
         $nvidiaDriversDir = Join-Path $scriptPath "drivers\nvidia"
         if (Test-Path $nvidiaDriversDir) {
-            Write-Host "Found Nvidia driver package at: $nvidiaDriversDir"
+            Write-Host "Found NVIDIA driver package at: $nvidiaDriversDir"
             Write-Host "Injecting drivers into WinPE image (this may take a moment)..."
             Dism /Add-Driver /Image:"$mountDir" /Driver:"$nvidiaDriversDir" /Recurse /ForceUnsigned | Out-Host
             if ($LASTEXITCODE -eq 0) {
-                Write-Success "Nvidia GPU drivers injected (RTX 3060 Ti / Ampere support enabled)"
+                Write-Success "NVIDIA GPU drivers injected (RTX 3060 Ti / Ampere support enabled)"
             } else {
-                Write-Warning "Nvidia driver injection returned exit code: $LASTEXITCODE"
+                Write-Warning "NVIDIA driver injection returned exit code: $LASTEXITCODE"
                 Write-Warning "RTX 3060 Ti may fall back to basic VGA mode in WinPE"
             }
         } else {
-            Write-Warning "No Nvidia driver package found at: $nvidiaDriversDir"
+            Write-Warning "No NVIDIA driver package found at: $nvidiaDriversDir"
             Write-Warning "RTX 3060 Ti and other Ampere GPUs will use the basic VGA driver in WinPE."
             Write-Host ""
-            Write-Host "  To add Nvidia driver support:" -ForegroundColor Yellow
-            Write-Host "  1. Download the matching Nvidia display driver (Game Ready / Studio DCH):"
+            Write-Host "  To add NVIDIA driver support:" -ForegroundColor Yellow
+            Write-Host "  1. Download the matching NVIDIA display driver (Game Ready / Studio DCH):"
             Write-Host "     https://www.nvidia.com/Download/index.aspx"
             Write-Host "  2. Self-extract the installer (run it and cancel, or use 7-Zip)."
             Write-Host "  3. Copy the Display.Driver sub-folder (INF, CAT, SYS files) to:"
@@ -443,6 +455,15 @@ try {
         Set-Content -Path $startnetPath -Value "@echo off`r`nwpeinit`r`n" -Encoding ASCII
     }
 
+    # Copy the Tabby AI setup script (downloaded + started at boot by startnet.cmd)
+    $srcSetupTabby = Join-Path $PSScriptRoot "Setup-Tabby.ps1"
+    if (Test-Path $srcSetupTabby) {
+        Copy-Item -Path $srcSetupTabby -Destination "$mountDir\Setup-Tabby.ps1" -Force
+        Write-Success "Tabby AI setup script copied from winpe/Setup-Tabby.ps1"
+    } else {
+        Write-Warning "winpe/Setup-Tabby.ps1 not found — Tabby AI auto-setup will be unavailable in WinPE"
+    }
+
     # Set Windows PE settings
     Write-Step "Configuring Windows PE settings..."
 
@@ -472,36 +493,55 @@ try {
 Nightmare OS - Windows PE Edition
 ==================================
 
-This is a custom Windows PE environment with the Nightmare OS web desktop.
+This is a custom Windows 11 PE environment with the Nightmare OS web desktop
+and Tabby AI coding assistant (v0.32.0, NVIDIA CUDA 12.4).
 
 Boot Process:
 1. Windows PE boots from USB
 2. startnet.cmd runs automatically
-3. Python HTTP server starts on port 8080
-4. Microsoft Edge opens in kiosk mode
-5. Nightmare OS desktop loads
+3. Tabby AI server downloads on first boot (requires NightmareOS-Data partition)
+   and starts on http://localhost:9090 using the RTX 3060 Ti GPU
+4. Python HTTP server starts on port 8080
+5. Microsoft Edge opens in kiosk mode
+6. Nightmare OS desktop loads
+
+Tabby AI Setup:
+- Requires a USB partition labeled "NightmareOS-Data" (NTFS)
+- On first boot, tabby_x86_64-windows-msvc-cuda124.zip (~160 MB) is downloaded
+  from GitHub and extracted to D:\NightmareOS-Data\Tabby\
+- Models are stored in D:\NightmareOS-Data\TabbyModels\
+- Tabby server runs on http://localhost:9090 using NVIDIA CUDA (RTX 3060 Ti)
+- Open the Tabby AI app on the desktop; the server URL is pre-set to localhost:9090
+- On subsequent boots, the cached binary is reused (no re-download needed)
+- To use a different Tabby model, run in Edge DevTools console:
+    fetch('http://localhost:9090/api/v1/...') or use the Tabby admin UI
 
 Important Notes:
-- Persistence enabled when D: partition exists (Edge profile stored on D:\NightmareOS-Data\EdgeProfile)
+- Persistence enabled when NightmareOS-Data partition found
+  (Edge profile: D:\NightmareOS-Data\EdgeProfile)
+  (Tabby binary: D:\NightmareOS-Data\Tabby\tabby.exe)
+  (Tabby models: D:\NightmareOS-Data\TabbyModels\)
 - No automatic reboot timer - sessions run indefinitely
 - Press Ctrl+Alt+Del to access Task Manager
-- To enable persistence: create an NTFS partition on your USB and label it NightmareOS-Data
+- To enable persistence: create an NTFS partition on USB labeled NightmareOS-Data
 
 Troubleshooting:
 - If the desktop doesn't load, press Alt+Tab to switch to browser window
-- Open Command Prompt from Task Manager if needed
-- Check that web server started: netstat -an | find "8080"
+- Check web server: netstat -an | find "8080"
+- Check Tabby server: netstat -an | find "9090"
+- View TabbySetup window if Tabby fails to start
 
 Network:
 - Network drivers load automatically if available
 - Check connection: ipconfig /all
-- Test connectivity: ping google.com
+- Test connectivity: ping 8.8.8.8
 
 System Information:
 - OS: Windows PE (Preinstallation Environment)
 - Desktop: Nightmare OS Web Desktop
 - Browser: Microsoft Edge (Kiosk Mode)
 - Web Server: Python HTTP Server on localhost:8080
+- AI Server: Tabby ML v0.32.0 (CUDA 12.4) on localhost:9090
 
 For more information, visit:
 https://github.com/NightmareDesigns/PC-operating-system
@@ -669,7 +709,7 @@ Write-Host "Important:" -ForegroundColor Red
 Write-Host "  • Supports 64-bit UEFI boot (amd64) using efisys_noprompt.bin (no keypress prompt)"
 Write-Host "  • Ventoy: copy NightmareOS-PE.iso to the Ventoy USB data partition root"
 Write-Host "    (Secure Boot must be disabled or the Ventoy MOK enrolled first)"
-Write-Host "  • Nvidia RTX 3060 Ti: place driver INFs in winpe\drivers\nvidia\ and rebuild"
+Write-Host "  • NVIDIA RTX 3060 Ti: place driver INFs in winpe\drivers\nvidia\ and rebuild"
 Write-Host "    (without injected drivers the GPU falls back to basic VGA in WinPE)"
 Write-Host "  • Persistence: create an NTFS partition labelled NightmareOS-Data on USB"
 Write-Host "    (Edge profile stored there automatically — data survives reboots)"

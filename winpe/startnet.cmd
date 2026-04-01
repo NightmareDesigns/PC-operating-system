@@ -20,7 +20,7 @@ if "%PE_FIRMWARE%"=="0x2" (
     echo [+] Boot mode: Legacy BIOS
 )
 
-REM Allow 1 second for PnP to enumerate freshly-loaded drivers (including Nvidia
+REM Allow 1 second for PnP to enumerate freshly-loaded drivers (including NVIDIA
 REM Ampere GPUs such as RTX 3060 Ti) before the display is used by the banner.
 timeout /t 1 /nobreak > nul
 echo [+] Display ready
@@ -88,6 +88,17 @@ if defined DLABEL (
     echo     and label it "NightmareOS-Data"
     echo.
 )
+
+REM ── Tabby AI Server (v0.32.0, NVIDIA CUDA 12.4 / RTX 3060 Ti) ──────────────
+echo [*] Starting Tabby AI setup (v0.32.0, NVIDIA CUDA 12.4)...
+if defined DLABEL (
+    start "Tabby AI" /min powershell -WindowStyle Minimized -File "X:\Setup-Tabby.ps1" -DataPartition "%DATA_PARTITION%"
+    echo [+] Tabby AI starting in background on http://localhost:9090
+    echo [+] See "Tabby AI" window for download and startup progress
+) else (
+    echo [-] Tabby AI skipped - requires NightmareOS-Data partition
+)
+echo.
 
 REM Change to Nightmare OS directory
 cd /d "%NIGHTMARE_OS_DIR%"
@@ -169,6 +180,8 @@ if defined DLABEL (
     echo   - Persistence DISABLED: Changes stored in RAM only
     echo     Create an NTFS partition labeled NightmareOS-Data on USB to enable
 )
+echo   - Tabby AI: open Tabby AI app, set server URL to http://localhost:9090
+echo     (auto-downloads on first boot when NightmareOS-Data partition is present)
 echo   - No automatic reboot timer
 echo.
 echo Troubleshooting:

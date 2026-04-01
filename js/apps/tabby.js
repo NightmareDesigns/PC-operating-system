@@ -10,7 +10,7 @@
   var STORAGE_KEY = 'nightos_tabby';
 
   var DEFAULT_STATE = {
-    serverUrl: 'http://localhost:8080',
+    serverUrl: 'http://localhost:9090',
     authToken: '',
     model: '',
     chatHistory: [],
@@ -177,10 +177,10 @@
             <div class="tabby-settings-form">
               <label class="tabby-label" for="tabby-server-url">
                 Tabby Server URL
-                <span class="tabby-hint">(e.g. http://localhost:8080)</span>
+                <span class="tabby-hint">(e.g. http://localhost:9090)</span>
               </label>
               <input class="tabby-input" type="url" id="tabby-server-url"
-                     placeholder="http://localhost:8080" aria-label="Tabby server URL" />
+                     placeholder="http://localhost:9090" aria-label="Tabby server URL" />
 
               <label class="tabby-label" for="tabby-auth-token">
                 Auth Token
@@ -204,12 +204,14 @@
               <div class="tabby-info-box">
                 <strong>🚀 Getting started with Tabby</strong>
                 <p>Tabby is a self-hosted AI coding assistant. Run it locally with Docker:</p>
-                <pre class="tabby-code-block">docker run -it \\
-  --gpus all \\
-  -p 8080:8080 \\
-  -v ~/.tabby:/data \\
-  tabbyml/tabby serve \\
+                <pre class="tabby-code-block">docker run -it \
+  --gpus all \
+  -p 9090:8080 \
+  -v ~/.tabby:/data \
+  tabbyml/tabby serve \
   --model TabbyML/StarCoder-1B</pre>
+                <p>Or on Windows with NVIDIA CUDA (RTX 3060 Ti / WinPE):</p>
+                <pre class="tabby-code-block">tabby.exe serve --device cuda --port 9090</pre>
                 <p>Or try the <a class="tabby-link" href="https://app.tabbyml.com" target="_blank" rel="noopener noreferrer">Tabby Cloud</a> hosted version.</p>
               </div>
             </div>
