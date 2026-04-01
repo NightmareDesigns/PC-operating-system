@@ -92,7 +92,7 @@ jobs:
 
           $copype = Get-ChildItem `
               "${env:ProgramFiles(x86)}\Windows Kits","${env:ProgramFiles}\Windows Kits" `
-              -Filter copype.cmd -Recurse -Depth 8 -ErrorAction SilentlyContinue |
+              -Filter copype.cmd -Recurse -Depth 5 -ErrorAction SilentlyContinue |
               Select-Object -First 1
 
           if ($copype) {
@@ -107,8 +107,11 @@ jobs:
             Write-Host "Downloading WinPE add-on setup (~5 MB)..."
             Invoke-WebRequest -Uri $ADK_PE_URL -OutFile $peSetup
             Write-Host "Installing WinPE add-on online..."
-            $proc = Start-Process -Wait -PassThru $peSetup `
-                -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /ceip off"
+            $peArgs = @(
+              '/features', 'OptionId.WindowsPreinstallationEnvironment',
+              '/quiet', '/norestart', '/ceip', 'off'
+            )
+            $proc = Start-Process -Wait -PassThru $peSetup -ArgumentList $peArgs
             # 0=success  3010=reboot-pending (CI-safe)  1001=already-installed (treat as success)
             if ($proc.ExitCode -notin @(0, 3010, 1001)) {
               Write-Error "WinPE add-on direct install failed (exit $($proc.ExitCode))"

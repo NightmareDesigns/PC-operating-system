@@ -232,7 +232,7 @@ function Find-CopypePath([string]$winPeRoot, [string]$arch) {
 
     # 2. Filesystem search – prefer paths containing the requested architecture
     foreach ($sr in $searchRoots) {
-        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 8 `
+        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 5 `
                              -ErrorAction SilentlyContinue |
                Where-Object { $_.FullName -like "*\$arch\*" } |
                Select-Object -First 1
@@ -244,7 +244,7 @@ function Find-CopypePath([string]$winPeRoot, [string]$arch) {
 
     # 3. Any copype.cmd (arch-agnostic fallback)
     foreach ($sr in $searchRoots) {
-        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 8 `
+        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 5 `
                              -ErrorAction SilentlyContinue |
                Select-Object -First 1
         if ($hit) {
