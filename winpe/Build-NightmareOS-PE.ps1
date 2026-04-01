@@ -185,9 +185,9 @@ function Find-ADKPath {
     } catch { Write-Host "winget check failed (non-fatal): $_" }
 
     # ── Source 5: Filesystem search for copype.cmd ────────────────────────────
-    # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
+    # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\copype.cmd
     # From the "Windows Kits\" search root that is 4 directory levels deep:
-    #   Windows Kits\10\Assessment and Deployment Kit\Windows Preinstallation Environment\<arch>\copype.cmd
+    #   Windows Kits\10\Assessment and Deployment Kit\Windows Preinstallation Environment\copype.cmd
     try {
         $searchRoots = @(
             "${env:ProgramFiles(x86)}\Windows Kits",
@@ -199,10 +199,9 @@ function Find-ADKPath {
                                  -Depth 4 -ErrorAction SilentlyContinue |
                    Select-Object -First 1
             if ($hit) {
-                # Walk up from copype.cmd:
-                #   <arch>\ → Windows Preinstallation Environment\ → Assessment and Deployment Kit\ (ADK root)
-                # DirectoryName gives <arch>\, two Split-Path calls give the ADK root.
-                $candidate = $hit.DirectoryName | Split-Path | Split-Path
+                # copype.cmd is in the "Windows Preinstallation Environment\" dir.
+                # One Split-Path up → "Assessment and Deployment Kit\" = ADK root.
+                $candidate = $hit.DirectoryName | Split-Path
                 Write-Host "Found ADK via copype.cmd search: $candidate"
                 if (Test-Path $candidate) { return $candidate }
             }
@@ -218,9 +217,12 @@ function Find-ADKPath {
 # installs copype.cmd to a non-standard location (e.g. "Likely broken for
 # FOSS users" variant) or where multiple Windows Kits versions coexist.
 function Find-CopypePath([string]$winPeRoot, [string]$arch) {
-    # 1. Standard path: <WinPE root>\<arch>\copype.cmd
+    # 1. Standard path: <WinPE root>\copype.cmd
+    # NOTE: copype.cmd lives in the WinPE root, NOT in the arch subdirectory.
+    # The arch subdirectory (e.g. amd64\) contains winpe.wim / WinPE_OCs and is
+    # read BY copype.cmd — copype.cmd itself is at the root level.
     if ($winPeRoot) {
-        $expected = Join-Path $winPeRoot "$arch\copype.cmd"
+        $expected = Join-Path $winPeRoot 'copype.cmd'
         if (Test-Path $expected) { return $expected }
     }
 
@@ -393,15 +395,22 @@ $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
 # Use copype.cmd to create base WinPE structure
 $copypePath = Find-CopypePath -winPeRoot $winPEPath -arch $Architecture
 if (-not $copypePath) {
-    Write-Error "copype.cmd not found. Checked: $winPEPath\$Architecture\copype.cmd and filesystem search."
+    Write-Error "copype.cmd not found. Checked: $winPEPath\copype.cmd and filesystem search."
     Write-Host "Ensure the Windows PE add-on is fully installed (windows-adk-winpe)."
     exit 1
 }
 
 Write-Host "Running: copype.cmd $Architecture $WorkDir"
-& cmd.exe /c "$copypePath" $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
+# cd into copype's own directory before calling it so that:
+#   - the batch file is referenced without any path (no quoting/space issues)
+#   - %~dp0 inside copype.cmd resolves correctly to the WinPE root
+$copypeDir = Split-Path $copypePath -Parent
+Push-Location $copypeDir
+& cmd.exe /c copype.cmd $Architecture `"$WorkDir`" 2>&1 | ForEach-Object { Write-Host $_ }
+$copypeExit = $LASTEXITCODE
+Pop-Location
 
-if (-not $?) {
+if ($copypeExit -ne 0) {
     Write-Error "Failed to create WinPE working directory"
     exit 1
 }
