@@ -199,20 +199,79 @@ Write-Step "Creating Windows PE working directory..."
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\Oscdimg"
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
 
-# Use copype.cmd to create base WinPE structure
-$copypePath = "$winPEPath\$Architecture\copype.cmd"
-if (-not (Test-Path $copypePath)) {
-    Write-Error "copype.cmd not found at: $copypePath"
-    exit 1
+# Build the WinPE working directory structure in pure PowerShell.
+# This replicates exactly what copype.cmd does (copy Media\, fwfiles\, winpe.wim)
+# without relying on cmd.exe — eliminating all %~dp0 resolution issues that
+# occur when the ADK path contains spaces ("C:\Program Files (x86)\...").
+$archPESourceDir = Join-Path $winPEPath $Architecture
+Write-Host "WinPE source directory: $archPESourceDir"
+
+# List immediate contents of the architecture source directory for diagnostics
+Write-Host "Contents of ${archPESourceDir}:"
+Get-ChildItem -Path $archPESourceDir -ErrorAction SilentlyContinue |
+    ForEach-Object { Write-Host "  $($_.Name)" }
+# Also list en-us\ if present (Windows 11 ADK stores winpe.wim here)
+$enUsDir = Join-Path $archPESourceDir "en-us"
+if (Test-Path $enUsDir) {
+    Write-Host "Contents of ${enUsDir}:"
+    Get-ChildItem -Path $enUsDir -ErrorAction SilentlyContinue |
+        ForEach-Object { Write-Host "  $($_.Name)" }
 }
 
-Write-Host "Running: copype.cmd $Architecture $WorkDir"
-& cmd.exe /c "$copypePath" $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
+$mediaSrc = Join-Path $archPESourceDir "Media"
+$fwSrc    = Join-Path $archPESourceDir "fwfiles"
 
-if (-not $?) {
-    Write-Error "Failed to create WinPE working directory"
+# Locate winpe.wim — Windows 11 ADK (v10.1.26100+) stores it under amd64\en-us\,
+# while older ADK versions put it directly in amd64\.  Search both locations.
+$winpewim = $null
+foreach ($candidate in @(
+    (Join-Path $archPESourceDir "winpe.wim"),
+    (Join-Path $archPESourceDir "en-us\winpe.wim")
+)) {
+    if (Test-Path $candidate) { $winpewim = $candidate; break }
+}
+if (-not $winpewim) {
+    # Broad search as final fallback
+    $hit = Get-ChildItem -Path $archPESourceDir -Filter "winpe.wim" -Recurse `
+                         -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($hit) { $winpewim = $hit.FullName }
+}
+
+if (-not (Test-Path $mediaSrc)) {
+    Write-Error "WinPE Media directory not found: $mediaSrc"
+    Write-Host "The Windows PE add-on may be partially installed."
     exit 1
 }
+if (-not $winpewim) {
+    Write-Error "winpe.wim not found under $archPESourceDir"
+    Write-Host "The Windows PE add-on may be partially installed."
+    exit 1
+}
+Write-Host "winpe.wim located at: $winpewim"
+
+Write-Host "Copying WinPE media structure to $WorkDir ..."
+
+# 1. Copy the bootable media tree (ETL, efisys.bin, etc.)
+$mediaDest = Join-Path $WorkDir "Media"
+Copy-Item -Path $mediaSrc -Destination $mediaDest -Recurse -Force -ErrorAction Stop
+
+# 2. Copy firmware files if present (UEFI + BIOS boot files: efisys.bin, etc.)
+if (Test-Path $fwSrc) {
+    $fwDest = Join-Path $WorkDir "fwfiles"
+    Copy-Item -Path $fwSrc -Destination $fwDest -Recurse -Force -ErrorAction Stop
+}
+
+# 3. Copy winpe.wim → <WorkDir>\Media\sources\boot.wim (standard WinPE convention)
+$bootWimDest = Join-Path $WorkDir "Media\sources\boot.wim"
+$bootWimDir  = Split-Path $bootWimDest -Parent
+# The sources\ directory is normally part of the Media tree copied in step 1.
+# Create it explicitly as a safety net in case the ADK media tree is non-standard.
+if (-not (Test-Path $bootWimDir)) {
+    Write-Host "Note: creating Media\sources\ (not found in Media tree)"
+    New-Item -ItemType Directory -Path $bootWimDir -Force | Out-Null
+}
+Copy-Item -Path $winpewim -Destination $bootWimDest -Force -ErrorAction Stop
+
 Write-Success "WinPE working directory created: $WorkDir"
 
 # Mount the WinPE image
@@ -223,6 +282,11 @@ $mountDir = "$WorkDir\mount"
 if (-not (Test-Path $bootWim)) {
     Write-Error "boot.wim not found at: $bootWim"
     exit 1
+}
+
+# DISM requires the mount directory to already exist.
+if (-not (Test-Path $mountDir)) {
+    New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
 }
 
 Dism /Mount-Image /ImageFile:"$bootWim" /index:1 /MountDir:"$mountDir" | Out-Host
