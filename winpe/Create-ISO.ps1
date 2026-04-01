@@ -112,64 +112,99 @@ if ([string]::IsNullOrEmpty($OutputPath)) {
 
 Write-Host "Output ISO: $OutputPath"
 
-# Check for Windows ADK
-Write-Step "Checking for Windows ADK..."
-$adkPath = "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit"
+# Locate Windows ADK using multi-source detection
+Write-Step "Checking for Windows ADK and oscdimg..."
 
-if (-not (Test-Path $adkPath)) {
-    Write-Error "Windows ADK not found!"
-    Write-Host "Please install Windows ADK for Windows 11 from:"
-    Write-Host "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install"
-    exit 1
-}
-Write-Success "Windows ADK found"
-
-# Detect architecture
-$bootWim = "$mediaDir\sources\boot.wim"
-if (-not (Test-Path $bootWim)) {
-    Write-Error "boot.wim not found at: $bootWim"
-    exit 1
-}
-
-# Try to detect architecture from media structure
-$arch = "amd64"  # Default to amd64
-$oscdimgPath = "$adkPath\Deployment Tools\$arch\Oscdimg\oscdimg.exe"
-
-if (-not (Test-Path $oscdimgPath)) {
-    # Try x86
-    $arch = "x86"
-    $oscdimgPath = "$adkPath\Deployment Tools\$arch\Oscdimg\oscdimg.exe"
+function Find-ADKRoot {
+    $regPaths = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
+        "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+    )
+    foreach ($regPath in $regPaths) {
+        try {
+            if (Test-Path $regPath) {
+                $kitsRoot = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).KitsRoot10
+                if ($kitsRoot) {
+                    $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                    if (Test-Path $candidate) { return $candidate }
+                }
+            }
+        } catch {}
+    }
+    foreach ($p in @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
+        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
+    )) { if (Test-Path $p) { return $p } }
+    return $null
 }
 
-if (-not (Test-Path $oscdimgPath)) {
-    Write-Error "oscdimg.exe not found!"
-    Write-Host "Tried:"
-    Write-Host "  • $adkPath\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-    Write-Host "  • $adkPath\Deployment Tools\x86\Oscdimg\oscdimg.exe"
-    Write-Host ""
-    Write-Host "Please ensure Windows ADK Deployment Tools are installed"
-    exit 1
+function Find-OscdimgPath([string]$adkRoot) {
+    if ($adkRoot) {
+        foreach ($a in @("amd64", "x86")) {
+            $candidate = Join-Path $adkRoot "Deployment Tools\$a\Oscdimg\oscdimg.exe"
+            if (Test-Path $candidate) { return $candidate }
+        }
+    }
+    foreach ($sr in @(
+        "${env:ProgramFiles(x86)}\Windows Kits",
+        "${env:ProgramFiles}\Windows Kits"
+    ) | Where-Object { Test-Path $_ }) {
+        $hit = Get-ChildItem $sr -Filter "oscdimg.exe" -Recurse -Depth 5 `
+                             -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($hit) { return $hit.FullName }
+    }
+    return $null
 }
-Write-Success "Found oscdimg: $oscdimgPath"
+
+function New-ISOWithXorriso([string]$mediaDir, [string]$isoPath,
+                            [string]$etfsboot, [string]$efisys) {
+    $xrCmd = Get-Command xorriso -ErrorAction SilentlyContinue
+    $xr    = if ($xrCmd) { $xrCmd.Source } else { $null }
+    if (-not $xr) {
+        foreach ($p in @(
+            "C:\ProgramData\chocolatey\bin\xorriso.exe",
+            "C:\tools\xorriso\xorriso.exe"
+        )) { if (Test-Path $p) { $xr = $p; break } }
+    }
+    if (-not $xr) { Write-Warning "xorriso not found on this system."; return $false }
+    Write-Host "ISO creator: xorriso ($xr)"
+    $xrArgs = @("-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
+                "-volid", "NIGHTMARE_OS", "-joliet", "-joliet-long", "-rational-rock")
+    if ($etfsboot -and (Test-Path $etfsboot)) {
+        # 0x07C0 (decimal 1984) is the standard BIOS boot-load segment used by
+        # mkisofs/genisoimage for El Torito bootable ISOs – it maps to linear
+        # address 0x7C00, the conventional BIOS boot sector entry point.
+        $xrArgs += @("-b", "boot/etfsboot.com", "-no-emul-boot",
+                     "-boot-load-seg", "1984", "-boot-load-size", "8", "-boot-info-table")
+    }
+    if ($efisys -and (Test-Path $efisys)) {
+        $xrArgs += @("-eltorito-alt-boot", "-e", "efi/microsoft/boot/efisys.bin", "-no-emul-boot")
+    }
+    $xrArgs += @("-o", $isoPath, $mediaDir)
+    & $xr @xrArgs
+    if ($LASTEXITCODE -eq 0) { Write-Success "ISO created with xorriso"; return $true }
+    Write-Warning "xorriso exited with code $LASTEXITCODE"
+    return $false
+}
+
+$adkPath      = Find-ADKRoot
+$oscdimgPath  = Find-OscdimgPath $adkPath
+if (-not $oscdimgPath) {
+    Write-Warning "oscdimg.exe not found in any Windows Kits location; will try xorriso."
+} else {
+    Write-Success "Found oscdimg: $oscdimgPath"
+}
 
 # Create ISO
 Write-Step "Creating bootable ISO..."
 
-$etfsboot = "$mediaDir\boot\etfsboot.com"
-$efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
-
-# Check boot files
+$etfsboot    = "$mediaDir\boot\etfsboot.com"
+$efisys      = "$mediaDir\efi\microsoft\boot\efisys.bin"
 $hasEtfsboot = Test-Path $etfsboot
-$hasEfisys = Test-Path $efisys
+$hasEfisys   = Test-Path $efisys
 
-if (-not $hasEtfsboot) {
-    Write-Warning "BIOS boot file not found: $etfsboot"
-}
-
-if (-not $hasEfisys) {
-    Write-Warning "UEFI boot file not found: $efisys"
-}
-
+if (-not $hasEtfsboot) { Write-Warning "BIOS boot file not found: $etfsboot" }
+if (-not $hasEfisys)   { Write-Warning "UEFI boot file not found: $efisys" }
 if (-not $hasEtfsboot -and -not $hasEfisys) {
     Write-Error "No boot files found! ISO will not be bootable."
     Write-Host "Expected files:"
@@ -178,7 +213,6 @@ if (-not $hasEtfsboot -and -not $hasEfisys) {
     exit 1
 }
 
-# Build oscdimg command
 Write-Host "Building bootable ISO..."
 Write-Host "  • Source: $mediaDir"
 Write-Host "  • Output: $OutputPath"
@@ -186,50 +220,65 @@ Write-Host "  • BIOS boot: $hasEtfsboot"
 Write-Host "  • UEFI boot: $hasEfisys"
 Write-Host ""
 
-try {
-    if ($hasEtfsboot -and $hasEfisys) {
-        # Both BIOS and UEFI boot
-        Write-Host "Creating dual-boot ISO (BIOS + UEFI)..."
-        $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
-        & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
-    } elseif ($hasEfisys) {
-        # UEFI boot only
-        Write-Host "Creating UEFI-only bootable ISO..."
-        $bootData = "2#pEF,e,b`"$efisys`""
-        & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
-    } elseif ($hasEtfsboot) {
-        # BIOS boot only
-        Write-Host "Creating BIOS-only bootable ISO..."
-        $bootData = "1#p0,e,b`"$etfsboot`""
-        & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
-    }
+$isoCreated = $false
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "ISO creation failed with exit code: $LASTEXITCODE"
-        exit 1
-    }
+# ── Tool 1: oscdimg ───────────────────────────────────────────────────────────
+if ($oscdimgPath) {
+    Write-Host "ISO creator: oscdimg ($oscdimgPath)"
+    try {
+        if ($hasEtfsboot -and $hasEfisys) {
+            Write-Host "Creating dual-boot ISO (BIOS + UEFI)..."
+            $bootData = "2#p0,e,b`"$etfsboot`"#pEF,e,b`"$efisys`""
+            & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
+        } elseif ($hasEfisys) {
+            Write-Host "Creating UEFI-only bootable ISO..."
+            $bootData = "2#pEF,e,b`"$efisys`""
+            & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
+        } elseif ($hasEtfsboot) {
+            Write-Host "Creating BIOS-only bootable ISO..."
+            $bootData = "1#p0,e,b`"$etfsboot`""
+            & $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData "$mediaDir" "$OutputPath"
+        }
+        $isoCreated = ($LASTEXITCODE -eq 0)
+        if (-not $isoCreated) { Write-Warning "oscdimg exited with code $LASTEXITCODE" }
+    } catch { Write-Warning "oscdimg error: $_" }
+} else {
+    Write-Warning "oscdimg not found – trying xorriso."
+}
 
-    Write-Success "ISO created successfully!"
+# ── Tool 2: xorriso ───────────────────────────────────────────────────────────
+if (-not $isoCreated) {
+    $isoCreated = New-ISOWithXorriso $mediaDir $OutputPath `
+                                     $(if ($hasEtfsboot) { $etfsboot } else { $null }) `
+                                     $(if ($hasEfisys) { $efisys } else { $null })
+}
 
-    # Get ISO file info
-    $isoFile = Get-Item $OutputPath
-    $isoSizeMB = [math]::Round($isoFile.Length / 1MB, 2)
+if (-not $isoCreated) {
+    Write-Error "ISO creation failed – neither oscdimg nor xorriso succeeded."
+    exit 1
+}
 
-    Write-Host ""
-    Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                                                           ║" -ForegroundColor Green
-    Write-Host "║     ISO CREATION COMPLETE!                                ║" -ForegroundColor Green
-    Write-Host "║                                                           ║" -ForegroundColor Green
-    Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
+Write-Success "ISO created successfully!"
 
-    Write-Host "ISO Details:" -ForegroundColor Cyan
-    Write-Host "  • File: $OutputPath"
-    Write-Host "  • Size: $isoSizeMB MB"
-    Write-Host "  • Created: $($isoFile.CreationTime)"
-    Write-Host ""
+# Get ISO file info
+$isoFile   = Get-Item $OutputPath
+$isoSizeMB = [math]::Round($isoFile.Length / 1MB, 2)
 
-    Write-Host "Usage Options:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║                                                           ║" -ForegroundColor Green
+Write-Host "║     ISO CREATION COMPLETE!                                ║" -ForegroundColor Green
+Write-Host "║                                                           ║" -ForegroundColor Green
+Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host ""
+
+Write-Host "ISO Details:" -ForegroundColor Cyan
+Write-Host "  • File: $OutputPath"
+Write-Host "  • Size: $isoSizeMB MB"
+Write-Host "  • Created: $($isoFile.CreationTime)"
+Write-Host ""
+
+Write-Host "Usage Options:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "1. Burn to DVD:" -ForegroundColor Yellow
     Write-Host "   • Use Windows built-in ISO burner (right-click ISO → Burn disc image)"
@@ -260,11 +309,8 @@ try {
 
     Write-Success "ISO ready to use!"
 
-} catch {
-    Write-Error "Error creating ISO: $_"
-    exit 1
-}
-
 Write-Host ""
-Write-Host "Press any key to exit..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if ($Host.Name -eq 'ConsoleHost' -and -not $env:CI) {
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
