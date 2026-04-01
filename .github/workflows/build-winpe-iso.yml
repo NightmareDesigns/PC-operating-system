@@ -109,12 +109,18 @@ jobs:
           $archPEOk = $false
           if ($winPERoot) {
             $archDir = Join-Path $winPERoot $arch
-            # winpe.wim or WinPE_OCs presence confirms the arch files are installed.
-            if ((Test-Path "$archDir\winpe.wim") -or (Test-Path "$archDir\WinPE_OCs")) {
+            # winpe.wim is required for the build — check amd64\ (older ADK) and
+            # amd64\en-us\ (Windows 11 ADK v10.1.26100+ stores it here).
+            $wimFound = (Test-Path "$archDir\winpe.wim") -or (Test-Path "$archDir\en-us\winpe.wim")
+            if ($wimFound -and (Test-Path "$archDir\WinPE_OCs")) {
               Write-Host "✓ WinPE $arch architecture files verified at: $archDir"
               $archPEOk = $true
             } else {
-              Write-Host "⚠ WinPE $arch directory missing or empty at: $archDir"
+              if (-not $wimFound) {
+                Write-Host "⚠ winpe.wim missing from $archDir and $archDir\en-us — fallback required"
+              } else {
+                Write-Host "⚠ WinPE_OCs missing from $archDir — fallback required"
+              }
             }
           } else {
             Write-Host "⚠ Windows Preinstallation Environment directory not found after Chocolatey install"

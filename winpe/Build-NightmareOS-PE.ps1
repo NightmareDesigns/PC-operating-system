@@ -399,24 +399,48 @@ $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
 $archPESourceDir = Join-Path $winPEPath $Architecture
 Write-Host "WinPE source directory: $archPESourceDir"
 
-# List contents of the architecture source directory for diagnostics
+# List immediate contents of the architecture source directory for diagnostics
+Write-Host "Contents of ${archPESourceDir}:"
 Get-ChildItem -Path $archPESourceDir -ErrorAction SilentlyContinue |
     ForEach-Object { Write-Host "  $($_.Name)" }
+# Also list en-us\ if present (Windows 11 ADK stores winpe.wim here)
+$enUsDir = Join-Path $archPESourceDir "en-us"
+if (Test-Path $enUsDir) {
+    Write-Host "Contents of ${enUsDir}:"
+    Get-ChildItem -Path $enUsDir -ErrorAction SilentlyContinue |
+        ForEach-Object { Write-Host "  $($_.Name)" }
+}
 
-$mediaSrc  = Join-Path $archPESourceDir "Media"
-$fwSrc     = Join-Path $archPESourceDir "fwfiles"
-$winpewim  = Join-Path $archPESourceDir "winpe.wim"
+$mediaSrc = Join-Path $archPESourceDir "Media"
+$fwSrc    = Join-Path $archPESourceDir "fwfiles"
+
+# Locate winpe.wim — Windows 11 ADK (v10.1.26100+) stores it under amd64\en-us\,
+# while older ADK versions put it directly in amd64\.  Search both locations.
+$winpewim = $null
+foreach ($candidate in @(
+    (Join-Path $archPESourceDir "winpe.wim"),
+    (Join-Path $archPESourceDir "en-us\winpe.wim")
+)) {
+    if (Test-Path $candidate) { $winpewim = $candidate; break }
+}
+if (-not $winpewim) {
+    # Broad search as final fallback
+    $hit = Get-ChildItem -Path $archPESourceDir -Filter "winpe.wim" -Recurse `
+                         -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($hit) { $winpewim = $hit.FullName }
+}
 
 if (-not (Test-Path $mediaSrc)) {
     Write-Error "WinPE Media directory not found: $mediaSrc"
     Write-Host "The Windows PE add-on may be partially installed."
     exit 1
 }
-if (-not (Test-Path $winpewim)) {
-    Write-Error "winpe.wim not found: $winpewim"
+if (-not $winpewim) {
+    Write-Error "winpe.wim not found under $archPESourceDir (checked amd64\, amd64\en-us\, and recursive search)"
     Write-Host "The Windows PE add-on may be partially installed."
     exit 1
 }
+Write-Host "winpe.wim located at: $winpewim"
 
 Write-Host "Copying WinPE media structure to $WorkDir ..."
 
