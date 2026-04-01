@@ -52,7 +52,10 @@ param(
     [bool]$IncludeEdge = $true,
 
     [Parameter(Mandatory=$false)]
-    [bool]$CreateISO = $false
+    [bool]$CreateISO = $false,
+
+    [Parameter(Mandatory=$false)]
+    [bool]$IncludeNvidiaDrivers = $true
 )
 
 # Set error action preference
@@ -240,7 +243,8 @@ try {
         "WinPE-Scripting.cab",
         "WinPE-PowerShell.cab",
         "WinPE-StorageWMI.cab",
-        "WinPE-DismCmdlets.cab"
+        "WinPE-DismCmdlets.cab",
+        "WinPE-HTA.cab"
     )
 
     $packagesPath = "$winPEPath\$Architecture\WinPE_OCs"
@@ -254,6 +258,51 @@ try {
         } else {
             Write-Warning "Package not found: $package"
         }
+    }
+
+    # Inject Nvidia GPU drivers for RTX 3060 Ti / Ampere architecture support
+    if ($IncludeNvidiaDrivers) {
+        Write-Step "Checking for Nvidia GPU drivers (RTX 3060 Ti / Ampere support)..."
+        $nvidiaDriversDir = Join-Path $scriptPath "drivers\nvidia"
+        if (Test-Path $nvidiaDriversDir) {
+            Write-Host "Found Nvidia driver package at: $nvidiaDriversDir"
+            Write-Host "Injecting drivers into WinPE image (this may take a moment)..."
+            Dism /Add-Driver /Image:"$mountDir" /Driver:"$nvidiaDriversDir" /Recurse /ForceUnsigned | Out-Host
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "Nvidia GPU drivers injected (RTX 3060 Ti / Ampere support enabled)"
+            } else {
+                Write-Warning "Nvidia driver injection returned exit code: $LASTEXITCODE"
+                Write-Warning "RTX 3060 Ti may fall back to basic VGA mode in WinPE"
+            }
+        } else {
+            Write-Warning "No Nvidia driver package found at: $nvidiaDriversDir"
+            Write-Warning "RTX 3060 Ti and other Ampere GPUs will use the basic VGA driver in WinPE."
+            Write-Host ""
+            Write-Host "  To add Nvidia driver support:" -ForegroundColor Yellow
+            Write-Host "  1. Download the matching Nvidia display driver (Game Ready / Studio DCH):"
+            Write-Host "     https://www.nvidia.com/Download/index.aspx"
+            Write-Host "  2. Self-extract the installer (run it and cancel, or use 7-Zip)."
+            Write-Host "  3. Copy the Display.Driver sub-folder (INF, CAT, SYS files) to:"
+            Write-Host "     $nvidiaDriversDir"
+            Write-Host "  4. Re-run this script to rebuild with driver support."
+            Write-Host ""
+        }
+    }
+
+    # Disable the Windows PE automatic reboot timer in the image registry
+    Write-Step "Disabling Windows PE automatic reboot timer..."
+    try {
+        $sysHive  = "$mountDir\Windows\System32\config\SYSTEM"
+        $tempKey  = "HKLM\WinPE_NightOS_SYSTEM"
+        & reg load $tempKey "$sysHive" 2>&1 | Out-Null
+        & reg add "$tempKey\ControlSet001\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+        [System.GC]::Collect()
+        Start-Sleep -Milliseconds 500
+        & reg unload $tempKey 2>&1 | Out-Null
+        Write-Success "Reboot timer disabled in WinPE registry"
+    } catch {
+        Write-Warning "Could not pre-disable PE timer via registry: $_"
+        Write-Warning "Runtime reg command in startnet.cmd will disable it at boot"
     }
 
     # Copy Nightmare OS files
@@ -293,6 +342,20 @@ try {
 @echo off
 wpeinit
 
+REM Disable the Windows PE automatic reboot timer (removes 72-hour session limit)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f >nul 2>&1
+
+REM Detect UEFI vs Legacy BIOS boot mode
+wpeutil UpdateBootInfo
+for /F "tokens=3" %%i IN ('reg query HKLM\System\CurrentControlSet\Control /v PEFirmwareType 2^>nul ^| find "PEFirmwareType"') DO set PE_FIRMWARE=%%i
+if "%PE_FIRMWARE%"=="0x2" (echo [+] Boot mode: 64-bit UEFI) else (echo [+] Boot mode: Legacy BIOS)
+
+REM Initialize display subsystem (required for NVIDIA Ampere GPUs such as RTX 3060 Ti)
+echo [*] Initializing display subsystem...
+timeout /t 1 /nobreak > nul
+echo [+] Display ready
+
+cls
 echo.
 echo ================================================================
 echo.
@@ -313,9 +376,25 @@ REM Initialize network
 echo Initializing network...
 wpeutil InitializeNetwork
 timeout /t 2 /nobreak > nul
+echo [+] Network initialized
 
 REM Set up environment
 set NIGHTMARE_OS_DIR=X:\NightmareOS
+set DATA_PARTITION=D:\NightmareOS-Data
+
+REM Configure persistence — store Edge profile on data partition when available
+echo [*] Configuring persistence...
+set EDGE_PROFILE_FLAG=
+if exist D:\ (
+    if not exist "%DATA_PARTITION%" mkdir "%DATA_PARTITION%" 2>nul
+    if not exist "%DATA_PARTITION%\EdgeProfile" mkdir "%DATA_PARTITION%\EdgeProfile" 2>nul
+    set "EDGE_PROFILE_FLAG=--user-data-dir=%DATA_PARTITION%\EdgeProfile"
+    echo [+] Persistence ENABLED - all browser data will survive reboots
+    echo [+] Profile: %DATA_PARTITION%\EdgeProfile
+) else (
+    echo [-] No data partition (D:) found - running in RAM-only mode
+)
+
 cd /d %NIGHTMARE_OS_DIR%
 
 echo.
@@ -332,19 +411,26 @@ timeout /t 5 /nobreak > nul
 REM Launch Microsoft Edge in kiosk mode
 echo Launching browser...
 if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
-    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog
-) else if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
-    start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog
-) else (
-    echo ERROR: Microsoft Edge not found!
-    echo Please install Microsoft Edge or modify startnet.cmd to use a different browser.
-    pause
+    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
+    goto :browser_launched
 )
+if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
+    start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
+    goto :browser_launched
+)
+echo ERROR: Microsoft Edge not found!
+pause
 
-REM Keep command prompt available
+:browser_launched
 echo.
 echo ================================================================
 echo Nightmare OS is now running
+if exist D:\ (
+    echo Persistence ENABLED: Data saved to D:\NightmareOS-Data
+) else (
+    echo Persistence DISABLED: RAM-only mode
+)
+echo No automatic reboot timer
 echo Press any key to open a command prompt...
 echo ================================================================
 pause > nul
@@ -393,10 +479,10 @@ Boot Process:
 5. Nightmare OS desktop loads
 
 Important Notes:
-- All data is stored in RAM (no persistence)
-- Automatically reboots after 72 hours (Windows PE limitation)
+- Persistence enabled when D: partition exists (Edge profile stored on D:\NightmareOS-Data\EdgeProfile)
+- No automatic reboot timer - sessions run indefinitely
 - Press Ctrl+Alt+Del to access Task Manager
-- Files saved in Nightmare OS are temporary
+- To enable persistence: create an NTFS partition on your USB and label it NightmareOS-Data
 
 Troubleshooting:
 - If the desktop doesn't load, press Alt+Tab to switch to browser window
@@ -461,11 +547,19 @@ if ($CreateISO) {
         # -u2 = Produce UDF file system
         # -udfver102 = UDF version 1.02
         # -bootdata:2 = Two boot images (for BIOS and UEFI)
-        # First boot image: BIOS boot (etfsboot.com)
-        # Second boot image: UEFI boot (efisys.bin)
+        # First boot image:  BIOS boot (etfsboot.com)
+        # Second boot image: UEFI 64-bit boot
+        #   efisys_noprompt.bin preferred — boots immediately without "Press any key"
+        #   which is required for Ventoy and automated kiosk environments.
+        #   Falls back to efisys.bin when efisys_noprompt.bin is absent.
 
         $etfsboot = "$mediaDir\boot\etfsboot.com"
-        $efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
+
+        # Prefer efisys_noprompt.bin: no "Press any key to boot from EFI" prompt.
+        # This is required for Ventoy compatibility and clean UEFI kiosk boot.
+        $efisysNoprompt = "$mediaDir\efi\microsoft\boot\efisys_noprompt.bin"
+        $efisysFallback  = "$mediaDir\efi\microsoft\boot\efisys.bin"
+        $efisys = if (Test-Path $efisysNoprompt) { $efisysNoprompt } else { $efisysFallback }
 
         # Check if boot files exist
         if (-not (Test-Path $etfsboot)) {
@@ -475,9 +569,12 @@ if ($CreateISO) {
         }
 
         if (-not (Test-Path $efisys)) {
-            Write-Warning "UEFI boot file not found: $efisys"
+            Write-Warning "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin)"
             Write-Warning "Attempting ISO creation without UEFI boot support..."
             $efisys = $null
+        } else {
+            $efisysLabel = if ($efisys -like "*noprompt*") { "efisys_noprompt.bin (Ventoy-compatible)" } else { "efisys.bin" }
+            Write-Host "64-bit UEFI boot file: $efisysLabel"
         }
 
         try {
@@ -509,7 +606,9 @@ if ($CreateISO) {
                 Write-Host "You can now:" -ForegroundColor Yellow
                 Write-Host "  • Burn the ISO to a DVD"
                 Write-Host "  • Use with virtual machines (VirtualBox, VMware, Hyper-V)"
-                Write-Host "  • Create bootable USB with Rufus or similar tools"
+                Write-Host "  • Create a bootable USB with Rufus (select GPT + UEFI for modern hardware)"
+                Write-Host "  • Boot via Ventoy: copy the ISO to the Ventoy USB data partition"
+                Write-Host "    Ventoy will list it in its menu automatically — no special config needed"
             } else {
                 Write-Error "ISO creation failed with exit code: $LASTEXITCODE"
             }
@@ -564,9 +663,15 @@ Write-Host "  3. Boot from USB drive"
 Write-Host "  4. Nightmare OS will start automatically"
 Write-Host ""
 Write-Host "Important:" -ForegroundColor Red
-Write-Host "  • Disable Secure Boot in BIOS/UEFI if boot fails"
-Write-Host "  • All changes in PE are temporary (RAM only)"
-Write-Host "  • PE automatically reboots after 72 hours"
+Write-Host "  • Supports 64-bit UEFI boot (amd64) using efisys_noprompt.bin (no keypress prompt)"
+Write-Host "  • Ventoy: copy NightmareOS-PE.iso to the Ventoy USB data partition root"
+Write-Host "    (Secure Boot must be disabled or the Ventoy MOK enrolled first)"
+Write-Host "  • Nvidia RTX 3060 Ti: place driver INFs in winpe\drivers\nvidia\ and rebuild"
+Write-Host "    (without injected drivers the GPU falls back to basic VGA in WinPE)"
+Write-Host "  • Persistence: create an NTFS partition labelled NightmareOS-Data on USB"
+Write-Host "    (Edge profile stored there automatically — data survives reboots)"
+Write-Host "  • No automatic reboot timer — sessions run indefinitely"
+Write-Host "  • Disable Secure Boot in BIOS/UEFI settings if boot fails on bare-metal"
 Write-Host ""
 
 Write-Success "Build process completed successfully!"

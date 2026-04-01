@@ -8,6 +8,23 @@ REM ====================================================================
 
 wpeinit
 
+REM Disable the Windows PE automatic reboot timer (removes 72-hour session limit)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f >nul 2>&1
+
+REM Detect UEFI vs Legacy BIOS boot mode
+wpeutil UpdateBootInfo
+for /F "tokens=3" %%i IN ('reg query HKLM\System\CurrentControlSet\Control /v PEFirmwareType 2^>nul ^| find "PEFirmwareType"') DO set PE_FIRMWARE=%%i
+if "%PE_FIRMWARE%"=="0x2" (
+    echo [+] Boot mode: 64-bit UEFI
+) else (
+    echo [+] Boot mode: Legacy BIOS
+)
+
+REM Initialize display subsystem (required for NVIDIA Ampere GPUs such as RTX 3060 Ti)
+echo [*] Initializing display subsystem...
+timeout /t 1 /nobreak > nul
+echo [+] Display ready
+
 cls
 echo.
 echo ================================================================
@@ -51,20 +68,21 @@ if not exist "%NIGHTMARE_OS_DIR%\index.html" (
 echo [+] Nightmare OS files found
 echo.
 
-REM Check for data partition (for persistence)
-echo [*] Checking for data partition...
+REM Configure persistence — store the Edge profile on the data partition when available
+echo [*] Configuring persistence...
+set EDGE_PROFILE_FLAG=
 if exist D:\ (
     echo [+] Data partition found at D:\
-    if not exist "%DATA_PARTITION%" (
-        mkdir "%DATA_PARTITION%" 2>nul
-        echo [+] Created persistence directory
-    )
-    echo [+] Persistence enabled - data will survive reboots
+    if not exist "%DATA_PARTITION%" mkdir "%DATA_PARTITION%" 2>nul
+    if not exist "%DATA_PARTITION%\EdgeProfile" mkdir "%DATA_PARTITION%\EdgeProfile" 2>nul
+    set "EDGE_PROFILE_FLAG=--user-data-dir=%DATA_PARTITION%\EdgeProfile"
+    echo [+] Persistence ENABLED - all browser data will survive reboots
+    echo [+] Profile: %DATA_PARTITION%\EdgeProfile
     echo.
 ) else (
-    echo [-] No data partition found
-    echo [-] Running in RAM-only mode - data will be lost on reboot
-    echo     To enable persistence, create a second partition on your USB drive
+    echo [-] No data partition (D:) found - running in RAM-only mode
+    echo     To enable persistence, create an NTFS partition on your USB drive
+    echo     and label it "NightmareOS-Data"
     echo.
 )
 
@@ -102,13 +120,13 @@ echo [*] Launching browser...
 REM Try Microsoft Edge (most common in WinPE)
 if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
     echo [+] Launching Microsoft Edge in kiosk mode
-    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog
+    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
     goto :browser_launched
 )
 
 if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
     echo [+] Launching Microsoft Edge in kiosk mode
-    start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog
+    start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
     goto :browser_launched
 )
 
@@ -142,11 +160,13 @@ echo Quick Tips:
 echo   - Press Alt+Tab to switch between browser and command prompt
 echo   - Press Ctrl+Alt+Del to access Task Manager
 if exist D:\ (
-    echo   - Persistence ENABLED: Data saved to D:\NightmareOS-Data
+    echo   - Persistence ENABLED: All data saved to D:\NightmareOS-Data
+    echo     Settings, history, and notes survive reboots automatically
 ) else (
-    echo   - Persistence DISABLED: All changes stored in RAM ^(lost on reboot^)
+    echo   - Persistence DISABLED: Changes stored in RAM only
+    echo     Create an NTFS partition labeled NightmareOS-Data on USB to enable
 )
-echo   - PE automatically reboots after 72 hours
+echo   - No automatic reboot timer
 echo.
 echo Troubleshooting:
 echo   - Check web server: netstat -an ^| find "8080"
