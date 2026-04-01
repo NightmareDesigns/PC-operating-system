@@ -546,8 +546,16 @@
     safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
     // Bold **...**
     safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    // Newlines to <br> (outside pre blocks — simple approach)
-    safe = safe.replace(/\n/g, '<br>');
+    // Newlines to <br>, but keep raw newlines inside <pre> blocks
+    var segments = safe.split(/(<pre>[\s\S]*?<\/pre>)/g);
+    for (var i = 0; i < segments.length; i++) {
+      // Only replace newlines in non-<pre> segments
+      if (!segments[i] || segments[i].indexOf('<pre>') === 0) {
+        continue;
+      }
+      segments[i] = segments[i].replace(/\n/g, '<br>');
+    }
+    safe = segments.join('');
     return safe;
   }
 
