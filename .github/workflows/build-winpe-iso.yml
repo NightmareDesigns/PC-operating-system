@@ -51,8 +51,6 @@ jobs:
   build-winpe-iso:
     name: Build WinPE ISO (${{ github.event.inputs.architecture || 'amd64' }})
     runs-on: windows-latest
-    timeout-minutes: 45
-
     env:
       WORK_DIR: C:\WinPE_NightmareOS
 
@@ -97,14 +95,16 @@ jobs:
           Write-Host "Installing xorriso via Chocolatey..."
           choco install xorriso --no-progress -y 2>&1 | Out-Host
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "⚠ xorriso install returned exit $LASTEXITCODE (non-fatal – build script searches common locations too)"
+            Write-Host "⚠ xorriso package not available in Chocolatey (exit $LASTEXITCODE) – build script will use oscdimg from ADK instead"
           }
           $xr = Get-Command xorriso -ErrorAction SilentlyContinue
           if ($xr) {
             Write-Host "✓ xorriso available at: $($xr.Source)"
           } else {
-            Write-Host "⚠ xorriso not in PATH after install (build script will search common locations)"
+            Write-Host "ℹ xorriso not in PATH – oscdimg from Windows ADK will be used as the primary ISO tool"
           }
+          # Always succeed: xorriso is an optional fallback; ADK oscdimg is the primary ISO creator
+          exit 0
 
       # ── 3b. Verify ADK installation and show discovered path ──────────────
       #
