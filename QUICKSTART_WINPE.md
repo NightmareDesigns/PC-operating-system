@@ -85,9 +85,10 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 
 **On Physical Machine:**
 1. Burn ISO to DVD using Windows built-in burner
-2. Or create USB from ISO using Rufus
-3. Boot from DVD/USB
-4. Nightmare OS starts automatically
+2. Or create USB from ISO using [Rufus](https://rufus.ie)
+3. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
+4. Boot from DVD/USB
+5. Nightmare OS starts automatically
 
 ## What Happens on Boot
 
@@ -126,6 +127,10 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 - Try USB 2.0 port instead of USB 3.0
 - Ensure USB boot is enabled in BIOS
 - Verify boot order in BIOS
+
+**Doesn't boot from Ventoy:**
+- Make sure you are using an ISO built with this project (it uses `efisys_noprompt.bin` for Ventoy compatibility)
+- If you have an older ISO built with `efisys.bin`, rebuild it using `.\winpe\Create-ISO.ps1` or re-run the GitHub Actions workflow to get a new ISO
 
 **Stops at command prompt:**
 - Check if browser launched with Alt+Tab

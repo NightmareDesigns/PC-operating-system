@@ -462,10 +462,21 @@ if ($CreateISO) {
         # -udfver102 = UDF version 1.02
         # -bootdata:2 = Two boot images (for BIOS and UEFI)
         # First boot image: BIOS boot (etfsboot.com)
-        # Second boot image: UEFI boot (efisys.bin)
+        # Second boot image: UEFI boot (efisys_noprompt.bin preferred for Ventoy)
 
         $etfsboot = "$mediaDir\boot\etfsboot.com"
-        $efisys = "$mediaDir\efi\microsoft\boot\efisys.bin"
+
+        # Prefer efisys_noprompt.bin so the ISO boots from Ventoy (and other
+        # chainloaders) without requiring "Press any key to boot from CD/DVD".
+        $efisysNoprompt = "$mediaDir\efi\microsoft\boot\efisys_noprompt.bin"
+        $efisysFallback = "$mediaDir\efi\microsoft\boot\efisys.bin"
+        if (Test-Path $efisysNoprompt) {
+            $efisys = $efisysNoprompt
+        } elseif (Test-Path $efisysFallback) {
+            $efisys = $efisysFallback
+        } else {
+            $efisys = $null
+        }
 
         # Check if boot files exist
         if (-not (Test-Path $etfsboot)) {
@@ -474,10 +485,9 @@ if ($CreateISO) {
             $etfsboot = $null
         }
 
-        if (-not (Test-Path $efisys)) {
-            Write-Warning "UEFI boot file not found: $efisys"
+        if ($null -eq $efisys) {
+            Write-Warning "UEFI boot file not found (checked efisys_noprompt.bin and efisys.bin)"
             Write-Warning "Attempting ISO creation without UEFI boot support..."
-            $efisys = $null
         }
 
         try {
