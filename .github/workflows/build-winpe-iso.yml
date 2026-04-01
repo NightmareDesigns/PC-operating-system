@@ -31,6 +31,12 @@ on:
     tags:
       - 'v*'
 
+  # ③ Build on every pull request that touches WinPE or workflow files
+  pull_request:
+    paths:
+      - '.github/workflows/build-winpe-iso.yml'
+      - 'winpe/**'
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Permissions
 # ──────────────────────────────────────────────────────────────────────────────
@@ -151,7 +157,7 @@ jobs:
           Write-Host "::group::Download Windows ADK layout"
           $adkSetup = "$env:TEMP\adksetup.exe"
           Write-Host "Fetching ADK setup (~5 MB)..."
-          Invoke-WebRequest -Uri $env:ADK_URL -OutFile $adkSetup -UseBasicParsing
+          Invoke-WebRequest -Uri $env:ADK_URL -OutFile $adkSetup
           Write-Host "Downloading ADK Deployment Tools layout (~700 MB)..."
           $proc = Start-Process -Wait -PassThru $adkSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_LAYOUT_DIR, '/features', 'OptionId.DeploymentTools')
@@ -180,7 +186,7 @@ jobs:
           Write-Host "::group::Download Windows PE Add-on layout"
           $peSetup = "$env:TEMP\adkwinpesetup.exe"
           Write-Host "Fetching WinPE add-on setup (~5 MB)..."
-          Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $peSetup -UseBasicParsing
+          Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $peSetup
           Write-Host "Downloading Windows PE layout (~1.5 GB)..."
           $proc = Start-Process -Wait -PassThru $peSetup `
               -ArgumentList @('/quiet', '/layout', $env:ADK_PE_LAYOUT_DIR, '/features', 'OptionId.WindowsPreinstallationEnvironment')
@@ -224,7 +230,7 @@ jobs:
               Write-Host "Layout not available – falling back to online install: $setup"
           } else {
               Write-Host "Bootstrapper not found; re-downloading for online install..."
-              Invoke-WebRequest -Uri $env:ADK_URL -OutFile $tempSetup -UseBasicParsing
+              Invoke-WebRequest -Uri $env:ADK_URL -OutFile $tempSetup
               $setup = $tempSetup
           }
 
@@ -266,7 +272,7 @@ jobs:
               Write-Host "Layout not available – falling back to online install: $setup"
           } else {
               Write-Host "Bootstrapper not found; re-downloading for online install..."
-              Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $tempSetup -UseBasicParsing
+              Invoke-WebRequest -Uri $env:ADK_PE_URL -OutFile $tempSetup
               $setup = $tempSetup
           }
 
@@ -301,10 +307,11 @@ jobs:
           Write-Host "WorkDir       : $env:WORK_DIR"
 
           .\winpe\Build-NightmareOS-PE.ps1 `
-              -Architecture  $arch `
-              -CreateISO     $true `
-              -WorkDir       $env:WORK_DIR `
-              -IncludePython $incPython
+              -Architecture        $arch `
+              -CreateISO           $true `
+              -WorkDir             $env:WORK_DIR `
+              -IncludePython       $incPython `
+              -IncludeNvidiaDrivers $true
 
       # ── 8. Verify ISO ──────────────────────────────────────────────────────
       - name: Verify ISO and collect metadata
