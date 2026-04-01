@@ -31,6 +31,12 @@ on:
     tags:
       - 'v*'
 
+  # ③ Build-check on every pull request that touches workflow or WinPE scripts
+  pull_request:
+    paths:
+      - '.github/workflows/build-winpe-iso.yml'
+      - 'winpe/**'
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Permissions
 # ──────────────────────────────────────────────────────────────────────────────
