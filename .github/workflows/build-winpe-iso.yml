@@ -59,13 +59,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Install Windows ADK + WinPE Add-on via Chocolatey ─────────────
+      # ── 2. Install Windows ADK + WinPE Add-on ────────────────────────────
       #
-      # Chocolatey is pre-installed on all GitHub-hosted Windows runners.
-      # It installs the correct ADK version for the runner, handles the case
-      # where ADK is already present (no-op / upgrade), and avoids the
-      # exit-code 1001 problem that the offline layout approach triggers when
-      # a newer ADK is already installed on Windows Server 2025 runners.
+      # Strategy:
+      #   a) Try Chocolatey (fast, handles version conflicts).
+      #      The windows-adk-winpe Chocolatey package is sometimes marked
+      #      "Likely broken for FOSS users" and may install without copype.cmd.
+      #   b) After both Chocolatey installs, verify copype.cmd is present.
+      #   c) If missing, fall back to a direct online install via the official
+      #      Microsoft fwlink (adkwinpesetup.exe /quiet online mode).
       - name: Install Windows ADK via Chocolatey
         id: install-adk
         shell: pwsh
@@ -81,7 +83,39 @@ jobs:
             Write-Error "windows-adk-winpe Chocolatey install failed (exit $LASTEXITCODE)"
             exit 1
           }
-          Write-Host "✓ Windows ADK + WinPE add-on installed successfully"
+          Write-Host "✓ Windows ADK + WinPE add-on installed via Chocolatey"
+
+          # Verify copype.cmd is actually present (the windows-adk-winpe Chocolatey
+          # package is sometimes "Likely broken for FOSS users" and may omit it).
+          $arch = "${{ github.event.inputs.architecture }}"
+          if ($arch -notin @('amd64','x86')) { $arch = 'amd64' }
+
+          $copype = Get-ChildItem `
+              "${env:ProgramFiles(x86)}\Windows Kits","${env:ProgramFiles}\Windows Kits" `
+              -Filter copype.cmd -Recurse -Depth 8 -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+
+          if ($copype) {
+            Write-Host "✓ copype.cmd verified at: $($copype.FullName)"
+          } else {
+            Write-Host "⚠ copype.cmd NOT found after Chocolatey install – falling back to direct Microsoft download"
+            # Download and run the WinPE add-on online installer directly.
+            # This is the official Microsoft bootstrapper; running it without /layout
+            # performs a direct online install and does NOT trigger exit 1001.
+            $ADK_PE_URL = "https://go.microsoft.com/fwlink/?linkid=2289981"
+            $peSetup = "$env:TEMP\adkwinpesetup.exe"
+            Write-Host "Downloading WinPE add-on setup (~5 MB)..."
+            Invoke-WebRequest -Uri $ADK_PE_URL -OutFile $peSetup
+            Write-Host "Installing WinPE add-on online..."
+            $proc = Start-Process -Wait -PassThru $peSetup `
+                -ArgumentList "/features OptionId.WindowsPreinstallationEnvironment /quiet /norestart /ceip off"
+            # 0=success  3010=reboot-pending (CI-safe)  1001=already-installed (treat as success)
+            if ($proc.ExitCode -notin @(0, 3010, 1001)) {
+              Write-Error "WinPE add-on direct install failed (exit $($proc.ExitCode))"
+              exit 1
+            }
+            Write-Host "✓ WinPE add-on installed directly from Microsoft (exit $($proc.ExitCode))"
+          }
 
       # ── 3. Install xorriso (alternative ISO creator; no ADK dependency) ───
       #

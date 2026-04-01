@@ -212,6 +212,50 @@ function Find-ADKPath {
     return $null
 }
 
+# ── Find copype.cmd for a given architecture ──────────────────────────────────
+# Probes the standard ADK path first, then falls back to a broad filesystem
+# search. This handles cases where the Chocolatey windows-adk-winpe package
+# installs copype.cmd to a non-standard location (e.g. "Likely broken for
+# FOSS users" variant) or where multiple Windows Kits versions coexist.
+function Find-CopypePath([string]$winPeRoot, [string]$arch) {
+    # 1. Standard path: <WinPE root>\<arch>\copype.cmd
+    if ($winPeRoot) {
+        $expected = Join-Path $winPeRoot "$arch\copype.cmd"
+        if (Test-Path $expected) { return $expected }
+    }
+
+    $searchRoots = @(
+        "${env:ProgramFiles(x86)}\Windows Kits",
+        "${env:ProgramFiles}\Windows Kits",
+        "$env:SystemDrive\Windows Kits"
+    ) | Where-Object { Test-Path $_ }
+
+    # 2. Filesystem search – prefer paths containing the requested architecture
+    foreach ($sr in $searchRoots) {
+        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 8 `
+                             -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -like "*\$arch\*" } |
+               Select-Object -First 1
+        if ($hit) {
+            Write-Host "Found copype.cmd via filesystem search: $($hit.FullName)"
+            return $hit.FullName
+        }
+    }
+
+    # 3. Any copype.cmd (arch-agnostic fallback)
+    foreach ($sr in $searchRoots) {
+        $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse -Depth 8 `
+                             -ErrorAction SilentlyContinue |
+               Select-Object -First 1
+        if ($hit) {
+            Write-Host "Found copype.cmd (fallback) via filesystem search: $($hit.FullName)"
+            return $hit.FullName
+        }
+    }
+
+    return $null
+}
+
 # ── Find oscdimg.exe (ADK Deployment Tools + filesystem search) ───────────────
 function Find-OscdimgPath([string]$adkRoot, [string]$arch) {
     # 1. Standard ADK Deployment Tools paths (try requested arch then common ones)
@@ -329,9 +373,10 @@ $env:Path += ";$adkPath\Deployment Tools\$Architecture\Oscdimg"
 $env:Path += ";$adkPath\Deployment Tools\$Architecture\DISM"
 
 # Use copype.cmd to create base WinPE structure
-$copypePath = "$winPEPath\$Architecture\copype.cmd"
-if (-not (Test-Path $copypePath)) {
-    Write-Error "copype.cmd not found at: $copypePath"
+$copypePath = Find-CopypePath -winPeRoot $winPEPath -arch $Architecture
+if (-not $copypePath) {
+    Write-Error "copype.cmd not found. Checked: $winPEPath\$Architecture\copype.cmd and filesystem search."
+    Write-Host "Ensure the Windows PE add-on is fully installed (windows-adk-winpe)."
     exit 1
 }
 
