@@ -51,7 +51,19 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
 4. Wait for completion (5-10 minutes)
 5. Safely eject USB drive
 
-**Option B: Bootable USB (Linux — [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader))**
+**Option B: Pre-built USB Image from CI (easiest — no tools needed)**
+
+The CI automatically produces a ready-to-flash `.img.gz` USB image after every successful ISO build.
+
+1. Go to the [**Build NightmareOS USB Image**](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-usb-image.yml) workflow.
+2. Click the most recent successful run → download the `NightmareOS-USB-Image-*` artifact.
+3. Extract the ZIP, then decompress: `gunzip NightmareOS-USB.img.gz`
+4. Flash to your USB drive:
+   - **Linux / macOS**: `sudo dd if=NightmareOS-USB.img of=/dev/sdX bs=4M status=progress && sync`
+   - **Windows**: open with [Rufus](https://rufus.ie) or [Balena Etcher](https://etcher.balena.io/)
+5. Boot the USB — GRUB2 menu appears automatically on both UEFI and legacy BIOS.
+
+**Option C: Bootable USB (Linux — [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) on your own machine)**
 
 Nightmare Loader is a multi-boot USB creator that supports UEFI and legacy BIOS.
 It auto-detects Windows PE ISOs and generates the correct GRUB2 menu entry.
@@ -62,31 +74,32 @@ It auto-detects Windows PE ISOs and generates the correct GRUB2 menu entry.
    ```
    Or download `NightmareOS-PE.iso` from the [CI artifact](https://github.com/NightmareDesigns/PC-operating-system/actions/workflows/build-winpe-iso.yml).
 
-2. On a Linux machine, install Nightmare Loader:
+2. On a Linux machine, install Nightmare Loader and system dependencies (Debian/Ubuntu):
    ```bash
    pip install nightmare-loader
-   # install system dependencies (Debian/Ubuntu)
    sudo apt install grub2-common grub-pc-bin grub-efi-amd64-bin parted dosfstools
    ```
 
-3. Find your USB drive letter (e.g. `/dev/sdb`):
+3. Find your USB drive (e.g. `/dev/sdb`):
    ```bash
    nightmare-loader drives
    ```
 
-4. Prepare the drive (**⚠ erases all data ⚠**):
+4. **Option C1 — use the helper script** (automatically sizes the image and runs Nightmare Loader):
    ```bash
-   sudo nightmare-loader prepare /dev/sdb
+   sudo ./winpe/Create-USB-Image.sh NightmareOS-PE.iso NightmareOS-USB.img
+   sudo dd if=NightmareOS-USB.img of=/dev/sdb bs=4M status=progress && sync
    ```
 
-5. Add the NightmareOS ISO:
+5. **Option C2 — write directly to USB** (⚠ erases all data on the drive ⚠):
    ```bash
+   sudo nightmare-loader prepare /dev/sdb
    sudo nightmare-loader add /dev/sdb NightmareOS-PE.iso --label "Nightmare OS"
    ```
 
 6. Safely eject and boot — GRUB will present the Nightmare OS entry on both UEFI and legacy BIOS systems.
 
-**Option C: Bootable ISO**
+**Option D: Bootable ISO**
 
 1. Build with ISO creation enabled:
    ```powershell
@@ -121,7 +134,7 @@ It auto-detects Windows PE ISOs and generates the correct GRUB2 menu entry.
 **On Physical Machine:**
 1. Burn ISO to DVD using Windows built-in burner
 2. Or create USB from ISO using [Rufus](https://rufus.ie) (Windows)
-3. Or use [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) (Linux) — see Option B above
+3. Or use [Nightmare Loader](https://github.com/NightmareDesigns/Nightmare-loader) (Linux) — see Option C above
 4. Or copy the ISO to a [Ventoy](https://www.ventoy.net) USB drive and select it from the Ventoy boot menu
 5. Boot from DVD/USB
 6. Nightmare OS starts automatically

@@ -344,6 +344,7 @@ jobs:
           | **VMware** | New VM wizard → attach ISO → Power On |
           | **Hyper-V** | New VM → DVD settings → attach ISO → Start |
           | **USB (Rufus)** | [rufus.ie](https://rufus.ie) – select ISO, GPT/UEFI, click START |
+          | **USB (Nightmare Loader)** | CI auto-produces a flashable ``NightmareOS-USB-Image-*`` artifact via the [Build NightmareOS USB Image](../workflows/build-usb-image.yml) workflow |
           | **DVD** | Right-click ISO → *Burn disc image* |
 
           ### To build again
