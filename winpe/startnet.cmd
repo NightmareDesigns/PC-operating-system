@@ -71,8 +71,11 @@ echo.
 REM Configure persistence — store the Edge profile on the data partition when available
 echo [*] Configuring persistence...
 set EDGE_PROFILE_FLAG=
-if exist D:\ (
-    echo [+] Data partition found at D:\
+REM Verify the intended NightmareOS-Data volume label to avoid writing to an unrelated D: drive
+set DLABEL=
+for /f "tokens=*" %%L in ('vol D: 2^>nul ^| findstr /i "NightmareOS-Data"') do set DLABEL=%%L
+if defined DLABEL (
+    echo [+] Data partition found at D:\ (label: NightmareOS-Data)
     if not exist "%DATA_PARTITION%" mkdir "%DATA_PARTITION%" 2>nul
     if not exist "%DATA_PARTITION%\EdgeProfile" mkdir "%DATA_PARTITION%\EdgeProfile" 2>nul
     set "EDGE_PROFILE_FLAG=--user-data-dir=%DATA_PARTITION%\EdgeProfile"
@@ -80,7 +83,7 @@ if exist D:\ (
     echo [+] Profile: %DATA_PARTITION%\EdgeProfile
     echo.
 ) else (
-    echo [-] No data partition (D:) found - running in RAM-only mode
+    echo [-] No NightmareOS-Data partition found - running in RAM-only mode
     echo     To enable persistence, create an NTFS partition on your USB drive
     echo     and label it "NightmareOS-Data"
     echo.
@@ -159,7 +162,7 @@ echo.
 echo Quick Tips:
 echo   - Press Alt+Tab to switch between browser and command prompt
 echo   - Press Ctrl+Alt+Del to access Task Manager
-if exist D:\ (
+if defined DLABEL (
     echo   - Persistence ENABLED: All data saved to D:\NightmareOS-Data
     echo     Settings, history, and notes survive reboots automatically
 ) else (

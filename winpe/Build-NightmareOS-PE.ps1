@@ -251,6 +251,11 @@ Write-Host "winpe.wim located at: $winpewim"
 
 Write-Host "Copying WinPE media structure to $WorkDir ..."
 
+# Ensure the working directory exists before copying content into it
+if (-not (Test-Path $WorkDir)) {
+    New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+}
+
 # 1. Copy the bootable media tree (ETL, efisys.bin, etc.)
 $mediaDest = Join-Path $WorkDir "Media"
 Copy-Item -Path $mediaSrc -Destination $mediaDest -Recurse -Force -ErrorAction Stop
@@ -355,18 +360,44 @@ try {
 
     # Disable the Windows PE automatic reboot timer in the image registry
     Write-Step "Disabling Windows PE automatic reboot timer..."
+    $regLoadSucceeded = $false
+    $sysHive  = "$mountDir\Windows\System32\config\SYSTEM"
+    $tempKey  = "HKLM\WinPE_NightOS_SYSTEM"
     try {
-        $sysHive  = "$mountDir\Windows\System32\config\SYSTEM"
-        $tempKey  = "HKLM\WinPE_NightOS_SYSTEM"
-        & reg load $tempKey "$sysHive" 2>&1 | Out-Null
-        & reg add "$tempKey\ControlSet001\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f 2>&1 | Out-Null
+        $null = & reg load $tempKey "$sysHive" 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "reg load failed with exit code $LASTEXITCODE."
+        }
+        $regLoadSucceeded = $true
+
+        $null = & reg add "$tempKey\ControlSet001\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "reg add failed with exit code $LASTEXITCODE."
+        }
+
         [System.GC]::Collect()
         Start-Sleep -Milliseconds 500
-        & reg unload $tempKey 2>&1 | Out-Null
+
         Write-Success "Reboot timer disabled in WinPE registry"
     } catch {
         Write-Warning "Could not pre-disable PE timer via registry: $_"
         Write-Warning "Runtime reg command in startnet.cmd will disable it at boot"
+    } finally {
+        if ($regLoadSucceeded) {
+            $maxUnloadAttempts = 3
+            for ($attempt = 1; $attempt -le $maxUnloadAttempts; $attempt++) {
+                $null = & reg unload $tempKey 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    break
+                }
+                if ($attempt -lt $maxUnloadAttempts) {
+                    Start-Sleep -Milliseconds 500
+                }
+            }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Failed to unload registry hive $tempKey after $maxUnloadAttempts attempts (exit code $LASTEXITCODE)."
+            }
+        }
     }
 
     # Copy Nightmare OS files
@@ -398,111 +429,19 @@ try {
         Write-Host "Extract the embeddable package to the Python directory"
     }
 
-    # Create startup script
-    Write-Step "Creating startup script..."
+    # Copy startup script from the authoritative winpe/startnet.cmd in the repo.
+    # Using the repo file (rather than an embedded here-string) ensures the built PE
+    # always runs the same script that contributors edit and test locally.
+    Write-Step "Copying startup script..."
     $startnetPath = "$mountDir\Windows\System32\startnet.cmd"
-
-    $startnetContent = @"
-@echo off
-wpeinit
-
-REM Disable the Windows PE automatic reboot timer (removes 72-hour session limit)
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\WinPE" /v BootTimeLimit /t REG_DWORD /d 0 /f >nul 2>&1
-
-REM Detect UEFI vs Legacy BIOS boot mode
-wpeutil UpdateBootInfo
-for /F "tokens=3" %%i IN ('reg query HKLM\System\CurrentControlSet\Control /v PEFirmwareType 2^>nul ^| find "PEFirmwareType"') DO set PE_FIRMWARE=%%i
-if "%PE_FIRMWARE%"=="0x2" (echo [+] Boot mode: 64-bit UEFI) else (echo [+] Boot mode: Legacy BIOS)
-
-REM Initialize display subsystem (required for NVIDIA Ampere GPUs such as RTX 3060 Ti)
-echo [*] Initializing display subsystem...
-timeout /t 1 /nobreak > nul
-echo [+] Display ready
-
-cls
-echo.
-echo ================================================================
-echo.
-echo   ███╗   ██╗██╗ ██████╗ ██╗  ██╗████████╗███╗   ███╗ █████╗ ██████╗ ███████╗
-echo   ████╗  ██║██║██╔════╝ ██║  ██║╚══██╔══╝████╗ ████║██╔══██╗██╔══██╗██╔════╝
-echo   ██╔██╗ ██║██║██║  ███╗███████║   ██║   ██╔████╔██║███████║██████╔╝█████╗
-echo   ██║╚██╗██║██║██║   ██║██╔══██║   ██║   ██║╚██╔╝██║██╔══██║██╔══██╗██╔══╝
-echo   ██║ ╚████║██║╚██████╔╝██║  ██║   ██║   ██║ ╚═╝ ██║██║  ██║██║  ██║███████╗
-echo   ╚═╝  ╚═══╝╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
-echo.
-echo                    Nightmare OS - Windows PE Edition
-echo                    ===================================
-echo.
-echo ================================================================
-echo.
-
-REM Initialize network
-echo Initializing network...
-wpeutil InitializeNetwork
-timeout /t 2 /nobreak > nul
-echo [+] Network initialized
-
-REM Set up environment
-set NIGHTMARE_OS_DIR=X:\NightmareOS
-set DATA_PARTITION=D:\NightmareOS-Data
-
-REM Configure persistence — store Edge profile on data partition when available
-echo [*] Configuring persistence...
-set EDGE_PROFILE_FLAG=
-if exist D:\ (
-    if not exist "%DATA_PARTITION%" mkdir "%DATA_PARTITION%" 2>nul
-    if not exist "%DATA_PARTITION%\EdgeProfile" mkdir "%DATA_PARTITION%\EdgeProfile" 2>nul
-    set "EDGE_PROFILE_FLAG=--user-data-dir=%DATA_PARTITION%\EdgeProfile"
-    echo [+] Persistence ENABLED - all browser data will survive reboots
-    echo [+] Profile: %DATA_PARTITION%\EdgeProfile
-) else (
-    echo [-] No data partition (D:) found - running in RAM-only mode
-)
-
-cd /d %NIGHTMARE_OS_DIR%
-
-echo.
-echo Starting Nightmare OS Desktop Environment...
-echo.
-
-REM Start local web server using PowerShell
-echo Starting web server on http://localhost:8080...
-start /min powershell -WindowStyle Hidden -Command "cd X:\NightmareOS; python -m http.server 8080 2>&1 | Out-Null"
-
-REM Wait for server to initialize
-timeout /t 5 /nobreak > nul
-
-REM Launch Microsoft Edge in kiosk mode
-echo Launching browser...
-if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
-    start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
-    goto :browser_launched
-)
-if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
-    start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --kiosk "http://localhost:8080/index.html" --edge-kiosk-type=fullscreen --no-first-run --disable-features=msEdgeFirstRunDialog --ignore-gpu-blocklist %EDGE_PROFILE_FLAG%
-    goto :browser_launched
-)
-echo ERROR: Microsoft Edge not found!
-pause
-
-:browser_launched
-echo.
-echo ================================================================
-echo Nightmare OS is now running
-if exist D:\ (
-    echo Persistence ENABLED: Data saved to D:\NightmareOS-Data
-) else (
-    echo Persistence DISABLED: RAM-only mode
-)
-echo No automatic reboot timer
-echo Press any key to open a command prompt...
-echo ================================================================
-pause > nul
-cmd /k
-"@
-
-    Set-Content -Path $startnetPath -Value $startnetContent -Encoding ASCII
-    Write-Success "Startup script created"
+    $srcStartnet  = Join-Path $PSScriptRoot "startnet.cmd"
+    if (Test-Path $srcStartnet) {
+        Copy-Item -Path $srcStartnet -Destination $startnetPath -Force
+        Write-Success "Startup script copied from winpe/startnet.cmd"
+    } else {
+        Write-Warning "winpe/startnet.cmd not found at $srcStartnet — writing minimal fallback"
+        Set-Content -Path $startnetPath -Value "@echo off`r`nwpeinit`r`n" -Encoding ASCII
+    }
 
     # Set Windows PE settings
     Write-Step "Configuring Windows PE settings..."

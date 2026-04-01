@@ -27,7 +27,7 @@ Signature   = "$Windows NT$"
 Class       = Display
 ClassGuid   = {4D36E968-E325-11CE-BFC1-08002BE10318}
 Provider    = %Provider%
-DriverVer   = 04/01/2024,0.0.0.1
+DriverVer   = 01/01/2000,0.0.0.0
 PnpLockdown = 1
 
 ; No CatalogFile= entry.  Build script uses /ForceUnsigned so no catalog is needed.

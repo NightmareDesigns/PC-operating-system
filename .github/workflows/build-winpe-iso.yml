@@ -51,6 +51,7 @@ jobs:
   build-winpe-iso:
     name: Build WinPE ISO (${{ github.event.inputs.architecture || 'amd64' }})
     runs-on: windows-latest
+    timeout-minutes: 90
 
     env:
       WORK_DIR: C:\WinPE_NightmareOS

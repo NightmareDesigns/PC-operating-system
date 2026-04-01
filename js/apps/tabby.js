@@ -48,11 +48,22 @@
     return headers;
   }
 
+  // AbortSignal.timeout() is not available in all Chromium/Edge builds.
+  // Use it when available, otherwise fall back to AbortController + setTimeout.
+  function abortSignalWithTimeout(ms) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+      return AbortSignal.timeout(ms);
+    }
+    var controller = new AbortController();
+    setTimeout(function () { controller.abort(); }, ms);
+    return controller.signal;
+  }
+
   function checkHealth(state) {
     return fetch(state.serverUrl.replace(/\/$/, '') + '/v1/health', {
       method: 'GET',
       headers: getHeaders(state),
-      signal: AbortSignal.timeout(5000),
+      signal: abortSignalWithTimeout(5000),
     });
   }
 
@@ -63,7 +74,7 @@
       method: 'POST',
       headers: getHeaders(state),
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
+      signal: abortSignalWithTimeout(60000),
     });
   }
 
@@ -77,7 +88,7 @@
       method: 'POST',
       headers: getHeaders(state),
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
+      signal: abortSignalWithTimeout(30000),
     });
   }
 
