@@ -477,6 +477,11 @@ if (-not (Test-Path $bootWim)) {
     exit 1
 }
 
+# DISM requires the mount directory to already exist.
+if (-not (Test-Path $mountDir)) {
+    New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
+}
+
 Dism /Mount-Image /ImageFile:"$bootWim" /index:1 /MountDir:"$mountDir" | Out-Host
 
 if (-not $?) {
