@@ -273,9 +273,9 @@ Write-Host "  • Check boot order in BIOS"
 Write-Host ""
 
 Write-Host "Important Notes:" -ForegroundColor Red
-Write-Host "  • All data is stored in RAM (no persistence)"
-Write-Host "  • Changes are lost when you reboot"
-Write-Host "  • Windows PE reboots automatically after 72 hours"
+Write-Host "  • All data is stored in RAM unless a D: persistence partition exists"
+Write-Host "  • Changes are lost on reboot when running in RAM-only mode"
+Write-Host "  • No automatic reboot timer"
 Write-Host "  • Requires 2 GB RAM minimum, 4 GB recommended"
 Write-Host ""
 

@@ -105,9 +105,9 @@ This guide will help you create a bootable USB drive with Nightmare OS running o
    - Changes are lost when you reboot
    - Files you create are temporary
    - Settings don't save between boots
-   - **NEW**: You can enable persistence! See [Persistence Guide](PERSISTENCE_GUIDE.md) to make data survive reboots
+   - **Enable persistence**: Create a second NTFS partition on your USB labelled `NightmareOS-Data` — Edge profile (localStorage, history, notes) will be stored there automatically
 
-⚠ **72 Hour Limit**: Windows PE reboots automatically after 72 hours
+⚠ **No automatic reboot timer** — sessions run indefinitely
 
 ⚠ **RAM Usage**: Runs entirely in RAM
    - Minimum: 2 GB RAM
