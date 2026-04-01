@@ -452,7 +452,7 @@ function initGlobalShortcuts() {
 function initDesktop() {
   loadSettings();
   // Apply accent color if customized
-  if (NightOS.settings.accentColor && NightOS.settings.accentColor !== '#4f8ef7') {
+  if (NightOS.settings.accentColor && NightOS.settings.accentColor !== '#8b00ff') {
     document.documentElement.style.setProperty('--accent', NightOS.settings.accentColor);
   }
   // Apply username

@@ -116,111 +116,34 @@ Write-Success "Running with administrator privileges"
 # Check for Windows ADK
 Write-Step "Checking for Windows ADK installation..."
 
-function Find-ADKPath {
-    # ── Source 1: Registry (both WOW6432Node and native hive) ─────────────────
+# Resolve the ADK path: check registry first, then common install paths.
+$adkPath = $null
+try {
     $regPaths = @(
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots",
         "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
     )
     foreach ($regPath in $regPaths) {
-        try {
-            if (Test-Path $regPath) {
-                $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
-                if ($kitsRoot) {
-                    $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                    if (Test-Path $candidate) {
-                        Write-Host "Found ADK via registry ($regPath): $candidate"
-                        return $candidate
-                    }
-                }
+        if (Test-Path $regPath) {
+            $kitsRoot = (Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue).KitsRoot10
+            if ($kitsRoot) {
+                $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
+                if (Test-Path $candidate) { $adkPath = $candidate; break }
             }
-        } catch {
-            Write-Host "Registry check ($regPath) failed (non-fatal): $_"
         }
     }
+} catch {}
 
-    # ── Source 2: Known filesystem paths (32-bit and 64-bit Program Files) ────
+if (-not $adkPath) {
     $candidates = @(
         "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit",
         "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit"
     )
-    foreach ($p in $candidates) {
-        if (Test-Path $p) {
-            Write-Host "Found ADK at known path: $p"
-            return $p
-        }
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { $adkPath = $c; break }
     }
-
-    # ── Source 3: Get-Package (Windows package manager) ───────────────────────
-    try {
-        $pkg = Get-Package -Name "*Windows Assessment and Deployment Kit*" `
-                           -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($pkg) {
-            Write-Host "Get-Package found: $($pkg.Name)"
-            $pkgLoc = Split-Path $pkg.Source -ErrorAction SilentlyContinue
-            foreach ($sub in @("Assessment and Deployment Kit", ".")) {
-                $candidate = if ($sub -eq ".") { $pkgLoc } else { Join-Path $pkgLoc $sub }
-                if ($candidate -and (Test-Path $candidate)) {
-                    Write-Host "Found ADK via Get-Package at: $candidate"
-                    return $candidate
-                }
-            }
-        }
-    } catch {
-        Write-Host "Get-Package check failed (non-fatal): $_"
-    }
-
-    # ── Source 4: winget (Windows Package Manager CLI) ────────────────────────
-    try {
-        $wg = Get-Command winget -ErrorAction SilentlyContinue
-        if ($wg) {
-            $wgOut = & winget list --name "Windows Assessment and Deployment Kit" 2>&1 |
-                     Where-Object { $_ -match "Windows Assessment" }
-            if ($wgOut) {
-                Write-Host "winget reports ADK installed; resolving path via registry..."
-                foreach ($regPath in $regPaths) {
-                    $kitsRoot = (Get-ItemProperty $regPath -ErrorAction SilentlyContinue).KitsRoot10
-                    if ($kitsRoot) {
-                        $candidate = Join-Path $kitsRoot "Assessment and Deployment Kit"
-                        if (Test-Path $candidate) {
-                            Write-Host "Found ADK via winget+registry: $candidate"
-                            return $candidate
-                        }
-                    }
-                }
-            }
-        }
-    } catch {
-        Write-Host "winget check failed (non-fatal): $_"
-    }
-
-    # ── Source 5: Filesystem search for copype.cmd ────────────────────────────
-    # copype.cmd lives at: <ADK>\Windows Preinstallation Environment\<arch>\copype.cmd
-    # Walking up 3 levels gives the ADK root.
-    try {
-        $searchRoots = @(
-            "${env:ProgramFiles(x86)}\Windows Kits",
-            "${env:ProgramFiles}\Windows Kits",
-            "$env:SystemDrive\Windows Kits"
-        ) | Where-Object { Test-Path $_ }
-        foreach ($sr in $searchRoots) {
-            $hit = Get-ChildItem -Path $sr -Filter "copype.cmd" -Recurse `
-                                 -Depth 4 -ErrorAction SilentlyContinue |
-                   Select-Object -First 1
-            if ($hit) {
-                $candidate = $hit.DirectoryName | Split-Path | Split-Path
-                Write-Host "Found copype.cmd at: $($hit.FullName) → ADK root: $candidate"
-                if (Test-Path $candidate) { return $candidate }
-            }
-        }
-    } catch {
-        Write-Host "copype.cmd search failed (non-fatal): $_"
-    }
-
-    return $null
 }
 
-$adkPath = Find-ADKPath
 if (-not $adkPath) {
     Write-Error "Windows ADK not found!"
     Write-Host "Please install Windows ADK for Windows 11 from:"
@@ -229,6 +152,7 @@ if (-not $adkPath) {
 }
 
 $winPEPath = "$adkPath\Windows Preinstallation Environment"
+
 if (-not (Test-Path $winPEPath)) {
     Write-Error "Windows PE add-on not found!"
     Write-Host "Please install Windows PE add-on for Windows ADK"

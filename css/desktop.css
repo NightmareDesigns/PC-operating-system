@@ -14,9 +14,9 @@
 }
 
 :root {
-  --accent: #4f8ef7;
-  --accent-dark: #2563eb;
-  --accent-light: #93c5fd;
+  --accent: #8b00ff;
+  --accent-dark: #6200b3;
+  --accent-light: #c080ff;
   --bg-dark: #0f1117;
   --bg-mid: #1a1d27;
   --bg-light: #252836;
@@ -80,21 +80,21 @@ html, body {
 }
 
 .boot-logo h1 {
-  font-family: var(--font);
+  font-family: var(--horror-font);
   font-size: 3rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent-light);
-  text-shadow: 0 0 14px rgba(79, 142, 247, 0.35);
+  text-shadow: 0 0 14px rgba(139, 0, 255, 0.35);
   animation: boot-glow 3s ease-in-out infinite;
 }
 
 @keyframes boot-glow {
-  0%, 100% { text-shadow: 0 0 14px rgba(79, 142, 247, 0.35); }
+  0%, 100% { text-shadow: 0 0 14px rgba(139, 0, 255, 0.35); }
   50% {
     text-shadow:
-      0 0 14px rgba(79, 142, 247, 0.95),
-      0 0 32px rgba(37, 99, 235, 0.45);
+      0 0 14px rgba(139, 0, 255, 0.95),
+      0 0 32px rgba(98, 0, 179, 0.45);
   }
 }
 
@@ -270,7 +270,7 @@ html, body {
 
 .login-input:focus {
   border-color: var(--accent);
-  background: rgba(79,142,247,0.08);
+  background: rgba(139,0,255,0.08);
 }
 
 .login-btn {
@@ -352,13 +352,13 @@ html, body {
 
 .desktop-icon:hover,
 .desktop-icon:focus {
-  background: rgba(79, 142, 247, 0.15);
-  border-color: rgba(79, 142, 247, 0.3);
+  background: rgba(139, 0, 255, 0.15);
+  border-color: rgba(139, 0, 255, 0.3);
 }
 
 .desktop-icon:active,
 .desktop-icon.active {
-  background: rgba(79, 142, 247, 0.3);
+  background: rgba(139, 0, 255, 0.3);
 }
 
 .icon-img {
@@ -406,7 +406,7 @@ html, body {
 }
 
 #context-menu li:hover {
-  background: rgba(79, 142, 247, 0.2);
+  background: rgba(139, 0, 255, 0.2);
   color: white;
 }
 
@@ -456,7 +456,7 @@ html, body {
 
 .taskbar-start:hover { background: rgba(255,255,255,0.1); }
 .taskbar-start:active,
-.taskbar-start.active { background: rgba(79, 142, 247, 0.25); }
+.taskbar-start.active { background: rgba(139, 0, 255, 0.25); }
 
 #taskbar-apps {
   display: flex;
@@ -493,8 +493,8 @@ html, body {
 
 .taskbar-app-btn:hover { background: rgba(255,255,255,0.12); }
 .taskbar-app-btn.active {
-  background: rgba(79, 142, 247, 0.2);
-  border-color: rgba(79, 142, 247, 0.4);
+  background: rgba(139, 0, 255, 0.2);
+  border-color: rgba(139, 0, 255, 0.4);
   color: white;
 }
 
@@ -609,7 +609,7 @@ html, body {
 
 .start-search:focus {
   border-color: var(--accent);
-  background: rgba(79,142,247,0.08);
+  background: rgba(139,0,255,0.08);
 }
 
 .start-apps {
@@ -651,8 +651,8 @@ html, body {
 .start-app-item > span:first-child { font-size: 1.6rem; }
 
 .start-app-item:hover {
-  background: rgba(79,142,247,0.15);
-  border-color: rgba(79,142,247,0.3);
+  background: rgba(139,0,255,0.15);
+  border-color: rgba(139,0,255,0.3);
   color: white;
 }
 
