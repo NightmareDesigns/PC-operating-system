@@ -206,16 +206,14 @@ jobs:
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       #
-      # Runs whenever adk-check did not confirm a full ADK installation.
-      # If the offline layout is present (cache hit or successful download) it
-      # installs from the layout; otherwise it falls back to a direct online
-      # install using the bootstrapper that was already downloaded to TEMP.
-      # This handles the case where the layout download returns exit 1001
-      # (e.g. Windows SDK sharing the KitsRoot10 registry key confuses the
-      # ADK installer into thinking a full ADK is already present, even though
-      # the Assessment and Deployment Kit directory does not exist).
+      # Skipped when:
+      #   • adk-check found a full ADK installation (installed == 'true'), OR
+      #   • the layout download returned exit 1001, meaning the runner already
+      #     has the ADK Deployment Tools installed (adk_preinstalled == 'true').
+      # Otherwise installs from the offline layout when available, falling back
+      # to the bootstrapper already downloaded to TEMP.
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.adk_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -254,10 +252,14 @@ jobs:
 
       # ── 6. Install WinPE Add-on ────────────────────────────────────────────
       #
-      # Same fallback logic as step 5 – uses offline layout when available,
-      # otherwise falls back to a direct online install.
+      # Skipped when:
+      #   • adk-check found a full ADK+WinPE installation (installed == 'true'), OR
+      #   • the layout download returned exit 1001, meaning the runner already
+      #     has the WinPE Add-on installed (winpe_preinstalled == 'true').
+      # Otherwise installs from the offline layout when available, falling back
+      # to a direct online install.
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.winpe_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
