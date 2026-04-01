@@ -400,15 +400,15 @@ if (-not $copypePath) {
     exit 1
 }
 
+Write-Host "copype.cmd path: $copypePath"
 Write-Host "Running: copype.cmd $Architecture $WorkDir"
-# cd into copype's own directory before calling it so that:
-#   - the batch file is referenced without any path (no quoting/space issues)
-#   - %~dp0 inside copype.cmd resolves correctly to the WinPE root
-$copypeDir = Split-Path $copypePath -Parent
-Push-Location $copypeDir
-& cmd.exe /c copype.cmd $Architecture `"$WorkDir`" 2>&1 | ForEach-Object { Write-Host $_ }
+# Invoke using the full path via PowerShell's & operator.
+# PowerShell runs .cmd files as: cmd.exe /c "<fullpath>" arg1 arg2
+# This sets %0 to the fully-qualified path, so %~dp0 inside copype.cmd
+# correctly resolves to the WinPE directory — even when the path contains
+# spaces (e.g. "C:\Program Files (x86)\Windows Kits\...").
+& $copypePath $Architecture "$WorkDir" 2>&1 | ForEach-Object { Write-Host $_ }
 $copypeExit = $LASTEXITCODE
-Pop-Location
 
 if ($copypeExit -ne 0) {
     Write-Error "Failed to create WinPE working directory"
