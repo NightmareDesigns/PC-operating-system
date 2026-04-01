@@ -200,16 +200,14 @@ jobs:
 
       # ── 5. Install ADK Deployment Tools ───────────────────────────────────
       #
-      # Runs whenever adk-check did not confirm a full ADK installation.
+      # Runs whenever adk-check did not confirm a full ADK installation AND
+      # the download step did not detect that ADK Deployment Tools were already
+      # present on the runner (exit 1001 from the layout command).
       # If the offline layout is present (cache hit or successful download) it
       # installs from the layout; otherwise it falls back to a direct online
       # install using the bootstrapper that was already downloaded to TEMP.
-      # This handles the case where the layout download returns exit 1001
-      # (e.g. Windows SDK sharing the KitsRoot10 registry key confuses the
-      # ADK installer into thinking a full ADK is already present, even though
-      # the Assessment and Deployment Kit directory does not exist).
       - name: Install Windows ADK – Deployment Tools
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.adk_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install ADK Deployment Tools"
@@ -250,8 +248,10 @@ jobs:
       #
       # Same fallback logic as step 5 – uses offline layout when available,
       # otherwise falls back to a direct online install.
+      # Skipped when the download step detected the WinPE Add-on was already
+      # installed on the runner (exit 1001 from the WinPE layout command).
       - name: Install Windows PE Add-on
-        if: steps.adk-check.outputs.installed != 'true'
+        if: steps.adk-check.outputs.installed != 'true' && steps.download-adk.outputs.winpe_preinstalled != 'true'
         shell: pwsh
         run: |
           Write-Host "::group::Install Windows PE Add-on"
